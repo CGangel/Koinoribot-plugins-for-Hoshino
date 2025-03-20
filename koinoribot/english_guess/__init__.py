@@ -2,6 +2,7 @@ import os
 import random
 import re
 
+import hoshino
 from hoshino import Service
 from .._interact import interact, ActSession
 from .guess_func import get_random_word, get_random_tango, kana_yomi_splt
@@ -33,7 +34,7 @@ cap_up = {'A':'Ａ', 'B':'Ｂ', 'C':'Ｃ', 'D':'Ｄ', 'E':'Ｅ', 'F':'Ｆ', 'G':
 total_times = [0, 0, 0, 6, 6, 6, 6, 6, 6, 6]
 digit_times = [0, 0, 6, 6, 6, 6, 6, 6, 6, 6]
 tango_times = [0, 0, 0, 6, 6, 6, 8, 10, 12, 15]
-expire_time = [0, 0, 0, 300, 300, 300, 400, 500, 600, 750]
+expire_time = [0, 0, 0, 600, 600, 600, 700, 800, 900, 1050]
 hint_time = [0, 0, 0, 4, 4, 4, 6, 8, 10, 12]  # 获取提示需要的次数
 temp_path = os.path.join(os.path.dirname(__file__), 'temp')
 
@@ -41,8 +42,11 @@ temp_path = os.path.join(os.path.dirname(__file__), 'temp')
 stare = get('emotion/瞪.jpg').cqcode
 
 
-@sv.on_prefix('wordle')
+@sv.on_prefix('wordle', '猜单词', '#猜单词', '/wordle')
 async def start_guess_english_game(bot, ev):
+    if interact.find_session(ev, name='24点游戏'):
+        await bot.send(ev, '有人在玩24点，暂时不能玩猜单词...')
+        return
     if interact.find_session(ev, name='猜单词游戏'):
         session = interact.find_session(ev, name='猜单词游戏')
         if session.is_expire():
@@ -91,11 +95,14 @@ async def start_guess_english_game(bot, ev):
     bg_path = os.path.join(os.path.dirname(__file__), f'data/imgs/en/{word_len}len.png')
     bg = BuildImage(0, 0, background=bg_path)
     bg.save(os.path.join(temp_path, f'{gid}.png'))
-    await bot.send(ev, f"[CQ:image,file=base64://{bg.pic2bs4()}]\n发送'~单词'来猜单词~当前为{level}词库\n限时{expire_time[word_len]}秒\n示例：~banana")
+    await bot.send(ev, f"[CQ:image,file=base64://{bg.pic2bs4()}]\n请直接发送单词~当前为{level}词库\n限时{expire_time[word_len]}秒")
 
 
-@sv.on_prefix('digitle')
+@sv.on_prefix('digitle', '猜数字', '#猜数字')
 async def start_guess_figure(bot ,ev):
+    if interact.find_session(ev, name='24点游戏'):
+        await bot.send(ev, '有人在玩24点，暂时不能玩猜数字...')
+        return
     if interact.find_session(ev, name='猜单词游戏'):
         session = interact.find_session(ev, name='猜单词游戏')
         if session.is_expire():
@@ -109,7 +116,7 @@ async def start_guess_figure(bot ,ev):
         length = int(message)
     gid = ev.group_id
 
-    session = ActSession.from_event('猜单词游戏', ev, usernum_limit=False, expire_time=300)
+    session = ActSession.from_event('猜单词游戏', ev, usernum_limit=False, expire_time=600)
     interact.add_session(session)
 
     rand_int = get_random_int(length)
@@ -121,11 +128,14 @@ async def start_guess_figure(bot ,ev):
     bg_path = os.path.join(os.path.dirname(__file__), f'data/imgs/dgt/{length}len.png')
     bg = BuildImage(0, 0, background=bg_path)
     bg.save(os.path.join(temp_path, f'{gid}.png'))
-    await bot.send(ev, f"[CQ:image,file=base64://{bg.pic2bs4()}]\n发送'~数字'来猜数字~\n示例：~114514")
+    await bot.send(ev, f"[CQ:image,file=base64://{bg.pic2bs4()}]\n请直接发送数字~")
 
 
-@sv.on_prefix('tangole')
+@sv.on_prefix('tangole', '猜日语', '#猜日语', '/tangole')
 async def start_guess_jpese(bot, ev):
+    if interact.find_session(ev, name='24点游戏'):
+        await bot.send(ev, '有人在玩24点，暂时不能玩猜日语...')
+        return
     if interact.find_session(ev, name='猜单词游戏'):
         session = interact.find_session(ev, name='猜单词游戏')
         if session.is_expire():
@@ -166,17 +176,22 @@ async def start_guess_jpese(bot, ev):
     bg_path = os.path.join(os.path.dirname(__file__), f'data/japanese/jp_{length}len.png')
     bg = BuildImage(0, 0, background=bg_path)
     bg.save(os.path.join(temp_path, f'{gid}.png'))
-    await bot.send(ev, f"[CQ:image,file=base64://{bg.pic2bs4()}]\n发送'~单词'来猜单词~当前为{trans[level]}日语词库，词义为【{rand_tango['mean']}】\n限时5分钟.")
+    await bot.send(ev, f"[CQ:image,file=base64://{bg.pic2bs4()}]\n请直接发送假名来猜词语~当前为{trans[level]}日语词库，词义为【{rand_tango['mean']}】\n限时5分钟.")
 
 
 
-@sv.on_prefix('~', '～', '&')
+# @sv.on_prefix('~', '～', '&')
+@sv.on_message()
 async def guess_english_game(bot, ev):
     gid = ev.group_id
     session = interact.find_session(ev, name='猜单词游戏')
     if not session:
         return
     if session.state['type'] == '英语单词':
+        message = ev.message.extract_plain_text().strip()
+        rematch = re.findall('^[a-zA-z]+$', message)
+        if not rematch and message not in ['提示', '退出', '结束']:
+            return
         word = session.state['word']
         word_low = session.state['word_low']
         pos = session.state['pos']
@@ -190,7 +205,6 @@ async def guess_english_game(bot, ev):
                 pic = BuildImage(0, 0, background=os.path.join(temp_path, f'{gid}.png'))
             await bot.send(ev, f'[CQ:image,file=base64://{pic.pic2bs4()}]时间已过，正确答案是{word}，{pos}{trans}')
             return
-        message = ev.message.extract_plain_text().strip()
         message = message.lower()
         if len(message) != length and message not in ['提示', '退出', '结束']:
             await bot.send(ev, f'要猜的单词长度为{length}喔')
@@ -275,7 +289,8 @@ async def guess_english_game(bot, ev):
             if message == '提示':
                 await bot.send(ev, '猜数字真的有提示的必要嘛?' + stare)
                 return
-            await bot.send(ev, f'需要输入正整数喔')
+            return
+        if len(message) == 1:
             return
         if len(message) != length:
             await bot.send(ev, f'要猜的数字为{length}位数喔')
@@ -357,7 +372,6 @@ async def guess_english_game(bot, ev):
             elif message == '提示':
                 await bot.send(ev, f'这个单词的意思是：{mean}')
                 return
-            await bot.send(ev, '需要输入平假名喔')
             return
         if len(rematch[0]) != length:
             await bot.send(ev, f'要猜的单词为{length}个纯假名喔')
