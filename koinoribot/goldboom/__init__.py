@@ -56,6 +56,11 @@ class GoldBombSession:
         # 找到下一个没有失败的玩家
         while True:
             try:
+                # 检查是否所有玩家都失败
+                if all(self.failed.get(user_id, False) for user_id in self.players):
+                    await self.end_game()
+                    break
+
                 next_player = next(self.turn)
                 if not self.failed.get(next_player, False): # 确保玩家没有失败
                     self.current_player = next_player
@@ -132,7 +137,7 @@ class GoldBombSession:
             message = '所有玩家都失败了，游戏流局！每人扣除500金币。\n'
 
             # 使用 asyncio.gather 并发执行扣款操作
-            tasks = [reduce_user_money(user_id, 'gold', PENALTY) for user_id in self.players]
+            tasks = [money.reduce_user_money(user_id, 'gold', PENALTY) for user_id in self.players]
             await asyncio.gather(*tasks)
 
             for user_id in self.players:
@@ -142,11 +147,11 @@ class GoldBombSession:
         else:
             message = f'恭喜 {MessageSegment.at(winner)} 获胜，获得奖池中的所有金币！\n'
             wining_money = self.players[winner]
-            await increase_user_money(winner, 'gold', wining_money)
+            await money.increase_user_money(winner, 'gold', wining_money)
             message += f'获得 {wining_money} 金币。\n'
 
             # 并发扣除失败者的金币
-            loser_tasks = [reduce_user_money(user_id, 'gold', PENALTY) for user_id in self.players if user_id != winner]
+            loser_tasks = [money.reduce_user_money(user_id, 'gold', PENALTY) for user_id in self.players if user_id != winner]
             await asyncio.gather(*loser_tasks)
 
             for user_id in self.players:
