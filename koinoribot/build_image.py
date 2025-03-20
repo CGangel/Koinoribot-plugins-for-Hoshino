@@ -938,3 +938,4 @@ class BuildImage:
     #
     def getchannel(self, type_):
         self.markImg = self.markImg.getchannel(type_)
+
