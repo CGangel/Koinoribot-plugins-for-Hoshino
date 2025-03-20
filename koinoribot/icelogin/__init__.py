@@ -24,7 +24,7 @@ sv = Service('冰祈小签到')
 key_list = ["金币", "幸运币", "星星"]
 
 
-@sv.on_fullmatch('签到', '冰祈签到', '#签到')
+@sv.on_fullmatch('签到', '冰祈签到', '#签到', '/签到')
 async def as_login_bonus(bot, ev):
     uid = ev['user_id']
     if not priv.check_priv(ev, priv.SUPERUSER):
@@ -48,7 +48,7 @@ async def as_login_bonus(bot, ev):
     qqname = ev.sender['nickname']
     if uid == 80000000:
         qqname = '请不要匿名使用bot'
-    imageToSend = await as_login_v3(uid = uid, username = username, qqname = qqname, nick_flag = nick_flag)
+    imageToSend = await as_login_v3(uid=uid, username=username, qqname=qqname, nick_flag=nick_flag)
     await bot.send(ev, imageToSend)
 #    else:
 #        msg = as_login(uid, username)
@@ -57,17 +57,17 @@ async def as_login_bonus(bot, ev):
     flmt.start_cd(uid)
 
 
-@sv.on_fullmatch('我的钱包', '#我的钱包')
+@sv.on_fullmatch('我的钱包', '#我的钱包', '/我的钱包')
 async def money_get(bot, ev):
     uid = ev['user_id']
-    if not priv.check_priv(ev, priv.SUPERUSER):
-        if not flmt_purse.check(uid):
-            await bot.send(ev, f'已经领过钱包卡片啦，稍微等一下再来领喔~({round(flmt_purse.left_time(uid))}s)')
-            return
+#    if not priv.check_priv(ev, priv.SUPERUSER):
+#        if not flmt_purse.check(uid):
+#            await bot.send(ev, f'已经领过钱包卡片啦，稍微等一下再来领喔~({round(flmt_purse.left_time(uid))}s)')
+#            return
     qqname = ev.sender['nickname']
     if uid == 80000000:
         qqname = '匿名者'
-    purse_card = await get_purse(uid = uid, user_name = qqname)
+    purse_card = await get_purse(uid=uid, user_name=qqname)
     await bot.send(ev, purse_card)
     flmt_purse.start_cd(uid)
 
@@ -92,7 +92,7 @@ async def upload_bg(bot, ev):
         msg = f'(将扣除{cost_num}金币)'
     if user_gold > cost_num:
         await bot.send(ev, f'已上传图片~' + msg)
-        money.reduce_user_money(uid, 'gold', cost_num)
+        await money.reduce_user_money(uid, 'gold', cost_num)
     else:
         await bot.send(ev, '金币不足...' + no)
 
@@ -102,5 +102,6 @@ async def remove_cstm_bg(bot, ev):
     uid = ev['user_id']
     del_custom_bg(uid)
     await bot.send(ev, '已恢复默认背景~')
+
 
 

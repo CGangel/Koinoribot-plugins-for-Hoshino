@@ -43,14 +43,14 @@ badluck = ['忌 抽卡上头', '忌 躺平', '忌 摸鱼', '忌 刷副本',
            '忌 做作业', '忌 刷抖音', '忌 睡懒觉', '忌 刷剧', '忌 无'
            ]
 
-birth_list = ["0808"
+birth_list = ["1232", "0422"
               ]
 
-member_list = ["冰祈"
+member_list = ["冰祈", "御子柴"
                ]
 
-event_list = ['0101', '0122', '0205', '0214', '0308', '0401', '0405', '0501',
-              '0601', '0622', '0701', '0801', '0822', '0929', '1001',
+event_list = ['0101', '0129', '0212', '0214', '0308', '0401', '0404', '0501',
+              '0601', '0531', '0701', '0801', '0829', '1006', '1001',
               '1010', '1011', '1101', '1111', '1224', '1225'
               ]
 
@@ -159,7 +159,7 @@ async def as_login_v3(uid, username, qqname, nick_flag):
             birth_flag = 1
             birthday_msg = f'{member_list[i]}的生日'
             if login_flag == 0:
-                extra_msg += f'☆ 星星+600 (生日)\n☆ 金币+300 (生日)\n'
+                extra_msg += f'☆ 星星+600 (生日)\n☆ 金币+3000 (生日)\n'
             break
         i += 1
     i = 0
@@ -168,12 +168,12 @@ async def as_login_v3(uid, username, qqname, nick_flag):
             event_flag = 1
             festival_msg = f'{event_name_list[i]}'
             if login_flag == 0:
-                extra_msg += f'☆ 星星+400 (节日)\n☆ 金币+200 (节日)\n'
+                extra_msg += f'☆ 星星+400 (节日)\n☆ 金币+2000 (节日)\n'
             break
         i += 1
 
     if not login_flag:
-        money.increase_user_money(uid, "logindays", 1)  # 签到天数
+        await money.increase_user_money(uid, "logindays", 1)  # 签到天数
 
     # === 今日人品值 ===
     h = int(money.get_user_money(uid, "rp")) if login_flag else _hash()  # 如果已经签过到，获取今日的人品值，范围0~100
@@ -195,22 +195,23 @@ async def as_login_v3(uid, username, qqname, nick_flag):
         luckygold_num = max(1, min(5, rp - 90))
         extra_msg += f'☆ 幸运币+{luckygold_num} (人品)\n'  # 幸运币
         luckygold_msg += f'☆ 幸运币+{luckygold_num}\n'
-        money.increase_user_money(uid, "luckygold", luckygold_num)
+        await money.increase_user_money(uid, "luckygold", luckygold_num)
     elif rp == 100 and not login_flag:
         luckygold_num = 10
         extra_msg += f'☆ 幸运币+{luckygold_num} (人品)\n'  # 幸运币
         luckygold_msg += f'☆ 幸运币+{luckygold_num}\n'
-        money.increase_user_money(uid, "luckygold", luckygold_num)
+        await money.increase_user_money(uid, "luckygold", luckygold_num)
     elif rp == 999 and not login_flag:
         luckygold_num = 20
         extra_msg += f'☆ 幸运币+{luckygold_num} (人品)\n'  # 幸运币
         luckygold_msg += f'☆ 幸运币+{luckygold_num}\n'
-        money.increase_user_money(uid, "luckygold", luckygold_num)
+        await money.increase_user_money(uid, "luckygold", luckygold_num)
 
     gold += rp
     logindays = money.get_user_money(uid, "logindays")
     star_add = min(500, (logindays // 10) * 50)
-    gold_add = min(100, max(0, (logindays // 10) * 5))
+    gold_add = random.randint(10 + logindays // 10 * 10, 100 + logindays // 10 * 10)
+    #gold_add = min(100, max(0, (logindays // 10) * 5))
 
     # === 日期+签到天数 ===
     date_msg = f'{months}月{days}日星期{week_list[week]}   已签到{logindays}天'
@@ -227,8 +228,8 @@ async def as_login_v3(uid, username, qqname, nick_flag):
                 money.set_user_bg_mode(uid, 0)
         num = rp * 5 + birth_flag * 600 + event_flag * 400 + star_add
         gold += birth_flag * 300 + event_flag * 200 + gold_add
-        money.increase_user_money(uid, "starstone", num)  # 星星
-        money.increase_user_money(uid, 'gold', gold)  # 金币
+        await money.increase_user_money(uid, "starstone", num)  # 星星
+        await money.increase_user_money(uid, 'gold', gold)  # 金币
         money.set_user_money(uid, "last_login", int(f'{months}0{days}'))
         money.set_user_money(uid, "rp", h)
         money.set_user_money(uid, "goodluck", good_todo_index)
@@ -293,15 +294,7 @@ async def as_login_v3(uid, username, qqname, nick_flag):
         bg = BuildImage(0, 0, font_size=30, background=imageFile, font = 'HYShiGuangTiW_0.ttf')
 
     # === 头像部分 ===
-    imageUrl = f'https://q1.qlogo.cn/g?b=qq&nk={uid}&src_uin=www.jlwz.cn&s=0'
-    async with aiohttp.ClientSession() as session:
-        profile_img = await creep_img(session, url = imageUrl, uid = uid)
-    iconFile = io.BytesIO(profile_img)
-    icon = BuildImage(0, 0, background = iconFile)
-    w, h = icon.size
-    icon.resize(ratio = 100 / w)
-    icon.circle()
-    bg.paste(icon, (23, 23), True)
+
 
     # === 日期+累计签到部分 ===
     date_text = BuildImage(0, 0, plain_text=date_msg, font_size=30, font='nyan.ttf',
@@ -504,15 +497,6 @@ async def get_purse(uid, user_name, guild_flag = 0):
     bg = BuildImage(0, 0, font_size=30, background=imageFile, font = 'yz.ttf')
 
     # === 头像 ===
-    imageUrl = f'https://q1.qlogo.cn/g?b=qq&nk={uid}&src_uin=www.jlwz.cn&s=0'
-    async with aiohttp.ClientSession() as session:
-        profile_img = await creep_img(session, url = imageUrl, uid = uid)
-    iconFile = io.BytesIO(profile_img)
-    icon = BuildImage(0, 0, background = iconFile)
-    w, h = icon.size
-    icon.resize(ratio = 80 / w)
-    icon.circle()
-    bg.paste(icon, (20, 18), True)
 
     # === 昵称 ===
     if len(user_name) >= 10:
