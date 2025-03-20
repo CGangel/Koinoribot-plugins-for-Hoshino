@@ -12,6 +12,7 @@ from .._R import get, userPath
 import sys
 import os
 from .. import money, config
+from hoshino.config import SUPERUSERS
 import time
 
 sv = Service('金币炸弹', visible=True, enable_on_default=True)
@@ -22,7 +23,7 @@ game_sessions = {}  # {group_id: {session_id: 金币炸弹session}}
 session_id_counter = 0 # 用于生成唯一的会话ID
 MAX_POT_LIMIT = 1000 #最大奖池
 PENALTY = 1000 #失败惩罚
-TIMEOUT = 180 # 超时时间
+TIMEOUT = 300 # 超时时间
 
 # 金币炸弹会话类
 class GoldBombSession:
@@ -336,6 +337,36 @@ async def stop_bet(bot: HoshinoBot, ev: Event):
          return
     await bot.send(ev, f'{MessageSegment.at(user_id)} 停止下注。')
     await session.stop_bet(user_id)
+    
+    
+@sv.on_prefix('关闭游戏')
+async def close_game_by_admin(bot: HoshinoBot, ev: Event):
+    """
+    管理员直接关闭当前群聊中的金币炸弹会话。
+    """
+    group_id = ev.group_id
+    user_id = ev.user_id
+
+    if user_id not in SUPERUSERS:
+        await bot.send(ev, "只有管理员才能使用此指令。", at_sender=True)
+        return
+
+    if group_id not in game_sessions or not game_sessions[group_id]:
+        await bot.send(ev, '当前群没有进行中的金币炸弹游戏。')
+        return
+
+    # 关闭当前群组的所有金币炸弹会话
+    sessions_to_close = list(game_sessions[group_id].items())  # 复制一份会话列表，避免迭代中修改字典
+    for session_id, session in sessions_to_close:
+        await session.close() #先正确关闭session
+        del game_sessions[group_id][session_id]  # 从字典中删除会话
+
+    # 检查是否需要删除 group_id 对应的键
+    if not game_sessions[group_id]:
+        del game_sessions[group_id]
+
+    await bot.send(ev, '管理员已关闭当前群的金币炸弹游戏。')
+    
 help_goldboom = '''
 金币炸弹游戏帮助：
 
@@ -365,7 +396,7 @@ help_goldboom = '''
 @sv.on_fullmatch('金币炸弹帮助')
 async def goldboom_help(bot, ev):
     """
-        拉取钓鱼帮助
+        拉取游戏帮助
     """
     chain = []
     await chain_reply(bot, ev, chain, help_goldboom)
