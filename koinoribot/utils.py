@@ -65,13 +65,12 @@ async def chain_reply(bot, ev, chain, msg, user_id = 0):
     """
         合并转发
     """
-    if ev.detail_type == 'guild':
-        await bot.gsend(ev, msg)
-        return chain
     if not user_id:
         user_id = ev.self_id
     user_info = await bot.get_stranger_info(user_id=user_id)
     user_name = user_info['nickname']
+    if not user_name.strip('　'):
+        user_name = '奇怪的名字'
     data = {
             "type": "node",
             "data": {

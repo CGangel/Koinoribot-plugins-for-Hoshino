@@ -134,6 +134,10 @@ class InteractHandler:
                 self.allaction[name][tw] = func
         return deco
 
+    '''def add_listener(self, name: str):
+        def deco(func: Callable) -> Callable:'''
+
+
     def add_msg_handler(self, session_name: str):
         """
         用作装饰器
