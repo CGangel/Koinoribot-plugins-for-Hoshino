@@ -3,9 +3,21 @@ import json
 
 import hoshino
 from ._R import userPath
+import asyncio
+
+# 用于用户金钱控制
+# get_user_money(user_id, key) return int    获取某种资源用户有多少
+# set_user_money(user_id, key, value)        直接设置用户某种资源为多少
+# increase_user_money(user_id, key, value)   增加用户某种资源多少
+# reduce_user_money(user_id, key, value)     减少用户某种资源多少（含数值校验）
+# increase_all_user_money(key, value         增加全部用户某种资源多少
+# translatename(name)                        将货币昵称转换成关键字
+# tran_kira(uid, key, num)                   将羽毛石转换成某个其他物资（请先用translatename(name) 转换为关键字）
+
 
 path = os.path.join(userPath, 'icelogin/user_money.json')
-bg_path = os.path.join(os.path.dirname(__file__), 'icelogin/user_background.json')
+bg_path = os.path.join(os.path.dirname(__file__),
+                       'icelogin/user_background.json')
 config = {  # 初始物资
     "default": {
         "gold": 200,  # 金币
@@ -73,6 +85,13 @@ def load_user_money():
 
 load_user_money()
 
+async def async_write_user_money():
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, _sync_write_user_money)
+
+def _sync_write_user_money():
+    with open(path, 'w', encoding='utf8') as f:
+        json.dump(user_money, f, ensure_ascii=False, indent=2)
 
 def get_user_money(user_id, key):  # 自带初始化的读取钱包功能
     load_user_money()
@@ -84,8 +103,7 @@ def get_user_money(user_id, key):  # 自带初始化的读取钱包功能
             user_money[user_id] = {}
             for k, v in config['default'].items():
                 user_money[user_id][k] = v
-            with open(path, 'w', encoding='utf8') as f:
-                json.dump(user_money, f, ensure_ascii=False, indent=2)
+            asyncio.create_task(async_write_user_money())
         if key in user_money[user_id]:
             return user_money[user_id][key]
         else:
@@ -104,14 +122,13 @@ def set_user_money(user_id, key, value):  # 自带初始化的设置货币功能
             for k, v in config['default'].items():
                 user_money[user_id][k] = v
         user_money[user_id][key] = value
-        with open(path, 'w', encoding='utf8') as f:
-            json.dump(user_money, f, ensure_ascii=False, indent=2)
+        asyncio.create_task(async_write_user_money())
         return 1
     except:
         return 0
 
 
-def increase_user_money(user_id, key, value):  # 自带初始化的增加货币功能
+async def increase_user_money(user_id, key, value):  # 自带初始化的增加货币功能
     if int(user_id) == 80000000:
         return
 
@@ -128,14 +145,13 @@ def increase_user_money(user_id, key, value):  # 自带初始化的增加货币�
         else:
             now_money = int(get_user_money(user_id, key)) + value
             user_money[user_id][key] = now_money
-        with open(path, 'w', encoding='utf8') as f:
-            json.dump(user_money, f, ensure_ascii=False, indent=2)
+        asyncio.create_task(async_write_user_money())
         return 1
     except:
         return 0
 
 
-def reduce_user_money(user_id, key, value):  # 自带初始化的减少货币功能
+async def reduce_user_money(user_id, key, value):  # 自带初始化的减少货币功能
     if int(user_id) == 80000000:
         return
 
@@ -155,8 +171,7 @@ def reduce_user_money(user_id, key, value):  # 自带初始化的减少货币功
         if now_money < 0:
             return 0
         user_money[user_id][key] = now_money
-        with open(path, 'w', encoding='utf8') as f:
-            json.dump(user_money, f, ensure_ascii=False, indent=2)
+        asyncio.create_task(async_write_user_money())
         return 1
     except:
         return 0
@@ -170,8 +185,7 @@ def increase_all_user_money(key, value):
             if key not in user_money[user_id].keys():
                 user_money[user_id][key] = config['default'][key]
             user_money[user_id][key] += value
-        with open(path, 'w', encoding='utf8') as f:
-            json.dump(user_money, f, ensure_ascii=False, indent=2)
+        asyncio.create_task(async_write_user_money())
         return 1
     except:
         return 0
@@ -188,8 +202,8 @@ def tran_kira(uid, key, num):
     else:
         value = 0
         num = 0
-    increase_user_money(uid, key, value)
-    reduce_user_money(uid, 'kirastone', num)
+    asyncio.create_task(increase_user_money(uid, key, value))
+    asyncio.create_task(reduce_user_money(uid, 'kirastone', num))
     return num, value
 
 
