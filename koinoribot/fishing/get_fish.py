@@ -38,14 +38,16 @@ def getUserInfo(uid):
     return user_info
 
 
-def fishing(uid):
+async def fishing(uid, skip_random_events=False, user_info=None):
     """
         mode=0: 普通鱼竿，
         mode=1: 永不空军，不会钓不到东西
         mode=2: 海之眷顾，更大可能性钓到水之心或漂流瓶
         mode=3：时运，钓上的鱼可能双倍
     """
-    user_info = getUserInfo(uid)
+    uid = str(uid)
+    if not user_info:
+        user_info = getUserInfo(uid)
     mode = user_info['rod']['current']
     probability = config.PROBABILITY[0 if mode == 3 else mode]  # 第一概率元组
     if not sum(probability) == 100:
@@ -62,6 +64,36 @@ def fishing(uid):
     if config.DEBUG_MODE:
         hoshino.logger.info(f'{uid}使用钓竿：{mode}，随机数为{first_choose}')
 
+    # 如果需要跳过随机事件和漂流瓶，则直接返回普通鱼
+    if skip_random_events:
+        if first_choose <= probability[0] * 10:
+            result = {'code': 1, 'msg': random.choice(no_fish_serif)}
+            return result
+        elif first_choose <= (probability[1] + probability[0]) * 10:
+            result = {'code': 1, 'msg': random.choice(no_fish_serif)}  # 即使是随机事件，也返回普通鱼
+            return result
+        elif first_choose <= (probability[2] + probability[1] + probability[0]) * 10:
+            second_choose = random.randint(1, 1000)
+            prob_sum = 0
+            fish = fish_list[0]
+            for i in range(len(probability_2)):
+                prob_sum += (int(probability_2[i]) * 10)
+                if second_choose <= prob_sum:
+                    fish = fish_list[i]
+                    break
+            multi = random.randint(1, 2) if mode == 3 else 1
+            add_msg = f'另外，鱼竿发动了时运效果，{fish}变成了{multi}条！' if multi > 1 else ''
+            increase_value(uid, 'fish', fish, 1 * multi, user_info)
+            increase_value(uid, 'statis', 'total_fish', 1 * multi, user_info)
+            msg = f'钓到了一条{fish}~' if random.randint(1, 10) <= 5 else random.choice(get_fish_serif).format(fish)
+            msg = msg + add_msg + '\n你将鱼放进了背包。'
+            result = {'code': 1, 'msg': msg}
+            return result
+        else:
+            result = {'code': 1, 'msg': random.choice(no_fish_serif)}  # 直接返回普通鱼
+            return result
+
+    # 正常情况下钓鱼，随机事件和漂流瓶可以触发
     if first_choose <= probability[0] * 10:
         result = {'code': 1, 'msg': random.choice(no_fish_serif)}
         return result
@@ -69,35 +101,32 @@ def fishing(uid):
         result = {'code': 3, 'msg': '<随机事件case>'}
         return result
     elif first_choose <= (probability[2] + probability[1] + probability[0]) * 10:
-        second_choose = config.FREEZE_SC if config.FREEZE_SC and config.DEBUG_MODE else random.randint(1, 1000)  # 第二次掷骰子——钓上不同的鱼
-        if config.DEBUG_MODE:
-            hoshino.logger.info(f'钓到了鱼，第二随机数为：{second_choose}')
+        second_choose = config.FREEZE_SC if config.FREEZE_SC and config.DEBUG_MODE else random.randint(1, 1000)
         prob_sum = 0
         fish = fish_list[0]
         for i in range(len(probability_2)):
             prob_sum += (int(probability_2[i]) * 10)
-            print(prob_sum)
             if second_choose <= prob_sum:
                 fish = fish_list[i]
                 break
-        multi = random.randint(1, 2) if mode == 3 else 1  # 时运竿特别效果
+        multi = random.randint(1, 2) if mode == 3 else 1
         add_msg = f'另外，鱼竿发动了时运效果，{fish}变成了{multi}条！' if multi > 1 else ''
-        increase_value(uid, 'fish', fish, 1 * multi)
-        increase_value(uid, 'statis', 'total_fish', 1 * multi)
+        increase_value(uid, 'fish', fish, 1 * multi, user_info)
+        increase_value(uid, 'statis', 'total_fish', 1 * multi, user_info)
         msg = f'钓到了一条{fish}~' if random.randint(1, 10) <= 5 else random.choice(get_fish_serif).format(fish)
         msg = msg + add_msg + '\n你将鱼放进了背包。'
         result = {'code': 1, 'msg': msg}
         return result
     elif first_choose <= (probability[3] + probability[2] + probability[1] + probability[0]) * 10:
-        second_choose = random.randint(1, 1000)  # 第二次掷骰子——钓上了金币还是幸运币
+        second_choose = random.randint(1, 1000)
         if second_choose <= 800:
             coin_amount = random.randint(1, 30)
-            money.increase_user_money(uid, 'gold', coin_amount)
+            await money.increase_user_money(uid, 'gold', coin_amount)
             result = {'code': 1, 'msg': f'你钓到了一个布包，里面有{coin_amount}枚金币，但是没有钓到鱼...'}
             return result
         else:
             coin_amount = random.randint(1, 3)
-            money.increase_user_money(uid, 'luckygold', coin_amount)
+            await money.increase_user_money(uid, 'luckygold', coin_amount)
             result = {'code': 1, 'msg': f'你钓到了一个锦囊，里面有{coin_amount}枚幸运币，但是没有钓到鱼...'}
             return result
     else:
@@ -105,7 +134,7 @@ def fishing(uid):
         return result
 
 
-def sell_fish(uid, fish, num: int = 1):
+async def sell_fish(uid, fish, num: int = 1):
     """
         卖鱼
 
@@ -123,7 +152,7 @@ def sell_fish(uid, fish, num: int = 1):
         num = total_info[uid]['fish'].get(fish)
     decrease_value(uid, 'fish', fish, num)
     get_golds = fish_price[fish] * num
-    money.increase_user_money(uid, 'gold', get_golds)
+    await money.increase_user_money(uid, 'gold', get_golds)
     if fish == '🍙':
         return f'成功退还了{num}个🍙，兑换了{get_golds}枚金币~'
     increase_value(uid, 'statis', 'sell', get_golds)
@@ -162,12 +191,19 @@ def free_fish(uid, fish, num: int = 1):
     return f'{num}{classifier}{fish}成功回到了水里，获得{get_frags}个水心碎片~{addition}'
 
 
-def buy_bait(uid, num = 1):
+async def buy_bait(uid, num = 1):
     """
         买鱼饵
     """
-    money.reduce_user_money(uid, 'gold', num * config.BAIT_PRICE)
+    await money.reduce_user_money(uid, 'gold', num * config.BAIT_PRICE)
     increase_value(uid, 'fish', '🍙', num)
+
+async def buy_bottle(uid, num = 1):
+    """
+        买漂流瓶
+    """
+    await money.reduce_user_money(uid, 'gold', num * config.BOTTLE_PRICE)
+    increase_value(uid, 'fish', '✉', num)
 
 
 def change_fishrod(uid, mode: int):
@@ -177,7 +213,9 @@ def change_fishrod(uid, mode: int):
     user_info = getUserInfo(uid)
     total_info = loadData(user_info_path)
     uid = str(uid)
-    if mode not in user_info['rod']['total_rod']:
+    if mode <= 0 or mode > 3:
+        return {'code': -1, 'msg': '没有这种鱼竿...'}
+    if (mode - 1) not in user_info['rod']['total_rod']:
         return {'code': -1, 'msg': '还没有拿到这个鱼竿喔'}
     total_info[uid]['rod']['current'] = mode - 1
     saveData(total_info, user_info_path)
@@ -197,30 +235,44 @@ def compound_bottle(uid, num: int = 1):
     return {'code': 1, 'msg': f'{num * config.CRYSTAL_TO_BOTTLE}个🔮发出柔和的光芒，融合成了{num}个漂流瓶体！\n可以使用"#扔漂流瓶+内容"来投放漂流瓶了！'}
 
 
-def decrease_value(uid, mainclass, subclass, num):
+def decrease_value(uid, mainclass, subclass, num, user_info=None):
     """
         减少某物品的数量
     """
-    uid = str(uid)
-    getUserInfo(uid)
-    total_info = loadData(user_info_path)
+    if not user_info:
+        uid = str(uid)
+        getUserInfo(uid)
+        total_info = loadData(user_info_path)
+    else:
+        if not user_info[mainclass].get(subclass): user_info[mainclass][subclass] = 0
+        user_info[mainclass][subclass] -= num
+        return
+
     if not total_info[uid][mainclass].get(subclass): total_info[uid][mainclass][subclass] = 0
     total_info[uid][mainclass][subclass] -= num
     if total_info[uid][mainclass][subclass] < 0:
         total_info[uid][mainclass][subclass] = 0
-    saveData(total_info, user_info_path)
+    if not user_info:
+        saveData(total_info, user_info_path)
 
 
-def increase_value(uid, mainclass, subclass, num):
+def increase_value(uid, mainclass, subclass, num, user_info=None):
     """
         增加某物品的数量
     """
-    uid = str(uid)
-    getUserInfo(uid)
-    total_info = loadData(user_info_path)
+    if not user_info:
+        uid = str(uid)
+        getUserInfo(uid)
+        total_info = loadData(user_info_path)
+    else:
+        if not user_info[mainclass].get(subclass): user_info[mainclass][subclass] = 0
+        user_info[mainclass][subclass] += num
+        return
+
     if not total_info[uid][mainclass].get(subclass): total_info[uid][mainclass][subclass] = 0
     total_info[uid][mainclass][subclass] += num
-    saveData(total_info, user_info_path)
+    if not user_info:
+        saveData(total_info, user_info_path)
 
 
 def set_value(uid, mainclass, subclass, num):
