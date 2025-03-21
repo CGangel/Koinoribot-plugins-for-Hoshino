@@ -147,7 +147,7 @@ async def go_fishing(bot, ev):
     decrease_value(uid, 'fish', '🍙', 10, user_info)
 
     # 执行钓鱼逻辑，传递 user_info
-    resp = await fishing(uid, user_info=user_info)
+    resp = fishing(uid, user_info=user_info)
 
     # 处理钓鱼返回结果
     if resp['code'] == 1:
