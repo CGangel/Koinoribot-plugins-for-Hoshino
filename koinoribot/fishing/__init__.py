@@ -46,6 +46,8 @@ help_1 = '''
 转账功能：
 转账 QQ号 金币数量
 示例：转账 123456 100
+低保功能（仅限金币＜5000且没有私藏鱼饵和鱼时）：
+直接发送 领低保
 钓鱼功能：
 1.#钓鱼帮助
 2.#买鱼饵 数量（例：#买鱼饵 5）
@@ -235,7 +237,7 @@ async def send_red_packet(bot, group_id, total_gold, num_packets):
         remain_money = sum(session.state['hb_list'])  # 获取剩下的金币
         if remain_money > 0:
             if session.state.get('owner'):  # 如果有发起人，则返还金币
-                await money.increase_user_money(session.state['owner'], 'gold', remain_money)
+                money.increase_user_money(session.state['owner'], 'gold', remain_money)
         session.close()  # 关闭旧会话
 
     # 验证红包参数
@@ -270,7 +272,7 @@ async def qiang_hongbao(bot, ev):
     session = interact.find_session(ev, name='系统红包')
     if session.is_expire():
         remain_money = sum(session.state['hb_list'])
-        await money.increase_user_money(session.state['owner'], 'gold', remain_money)
+        money.increase_user_money(session.state['owner'], 'gold', remain_money)
         await session.send(ev, f'红包过期，已返还剩余的{remain_money}枚金币')
         session.close()
         return
@@ -280,7 +282,7 @@ async def qiang_hongbao(bot, ev):
     if session.state['hb_list']:
         user_gain = session.state['hb_list'].pop()
         session.state['users'].append(ev.user_id)
-        await money.increase_user_money(ev.user_id, 'gold', user_gain)
+        money.increase_user_money(ev.user_id, 'gold', user_gain)
         await bot.send(ev, f'你抢到了{user_gain}枚金币~', at_sender=True)
     if not session.state['hb_list']:
         session.close()
@@ -370,11 +372,11 @@ async def catch_Loli(bot, ev):
         damage = random.randint(config.lowdamage, config.highdamage)
         if random.random() < config.bbjb:
             if user_gold >= damage:  # 确保玩家金币足够被扣减
-                await money.reduce_user_money(uid, 'gold', damage)  # 损失金币
+                money.reduce_user_money(uid, 'gold', damage)  # 损失金币
                 await bot.send(ev, f'\n你的攻击打出了miss，蠢萝莉进行了反击！你损失了{damage}金币！', at_sender=True)
                 return
             else:
-                await money.reduce_user_money(uid, 'gold', user_gold)
+                money.reduce_user_money(uid, 'gold', user_gold)
                 await bot.send(ev, f'\n你的攻击打出了miss，蠢萝莉进行了反击！不过你已家徒四壁，只损失了{user_gold}金币！', at_sender=True)
                 return
         else:
@@ -387,12 +389,12 @@ async def catch_Loli(bot, ev):
         if random.random() < config.xinyun_bjb:
             damage = random.randint(config.lowdamage * 10, config.highdamage * 10)
             Loli_hp -= damage
-            await money.increase_user_money(uid, 'gold', damage * 10)
+            money.increase_user_money(uid, 'gold', damage * 10)
             await bot.send(ev, f'\n恭喜你！捉萝莉时触发了幸运暴击，爆出了 {damage * 10} 金币！', at_sender=True)
         else:
             damage = random.randint(config.lowdamage, config.highdamage)
             Loli_hp -= damage
-            await money.increase_user_money(uid, 'gold', damage)
+            money.increase_user_money(uid, 'gold', damage)
             await bot.send(ev, f'\n恭喜你！捉萝莉时触发了暴击，造成了{damage}点伤害！同时爆出了 {damage} 金币！', at_sender=True)
     else:
         damage = random.randint(config.lowdamage, config.highdamage)
@@ -410,59 +412,113 @@ async def catch_Loli(bot, ev):
     if Loli_hp <= 0:
         Loli_hp = Loli_MAX_HP  # 重置蠢萝莉血量
         has_triggered = []  # 重置触发记录
-        await money.increase_user_money(uid, 'gold', config.jishagold)
+        money.increase_user_money(uid, 'gold', config.jishagold)
         await bot.send(ev, f'\n你给予了蠢萝莉最后一击！获得了 {config.jishagold} 金币的奖励。', at_sender=True)
         # 向群聊发送拼手气红包
         group_id = ev.group_id
         await send_red_packet(bot, group_id, REWARD_TOTAL_GOLD, REWARD_NUM)
 
 ###########################################################################
-@sv.on_fullmatch('十连钓鱼')
-async def ten连_fishing(bot, ev):
+async def multi_fishing(bot, ev, times, cost, command_name):
     """
-        开始十连钓鱼
+    多连钓鱼 - 消耗指定数量的饭团并进行指定次数的钓鱼
+     bot: bot 对象
+     ev: event 对象
+     times: 钓鱼次数
+     cost: 消耗的饭团数量
+     command_name: 命令名称，用于输出信息
     """
     uid = ev.user_id
-    if ev.user_id in BLACKUSERS:
-        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
-        return
-    await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' +no, at_sender=True)
-    return
+#    if ev.user_id in BLACKUSERS:
+#        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' + no, at_sender=True)
+#        return
+
+    # 为了避免重复输出，这里只输出一次被占领的信息
+    # await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' + no, at_sender=True)
+    # return
+
     user_info = getUserInfo(uid)
 
-    # 检查十连钓鱼冷却时间
+    # 检查钓鱼冷却时间
     if left_time(uid) > 0 and not config.DEBUG_MODE:
         await bot.send(ev, random.choice(cool_time_serif) + f'({int(left_time(uid))}s)')
         return
 
-    # 检查饭团数量
-    if user_info['fish']['🍙'] < 95:
-        await bot.send(ev, '十连钓鱼需要95个饭团，您的饭团不足！')
+    # 检查鱼饵数量
+    if user_info['fish'].get('🍙', 0) < cost:
+        await bot.send(ev, f'{command_name}需要 {cost} 个饭团，您的饭团不足！')
         return
 
-    # 启动十连钓鱼冷却
+    # 启动钓鱼冷却
     start_cd(uid)
-    
-    # 消耗95个饭团
-    decrease_value(uid, 'fish', '🍙', 95, user_info)
-    
-    await bot.send(ev, '你开始了十连钓鱼！每次钓鱼都不会触发漂流瓶或随机事件。')
-    
-    # 收集所有十次钓鱼的结果
-    fishing_results = []
 
-    # 执行十次钓鱼，且每次钓鱼不触发随机事件
-    for i in range(10):
-        resp = await fishing(uid, skip_random_events=True, user_info=user_info)  # skip_random_events 用于跳过随机事件
+    # 消耗饭团
+    decrease_value(uid, 'fish', '🍙', cost, user_info)
 
+    await bot.send(ev, f'你开始了{command_name}！')
+
+    # 汇总结果字典
+    result_summary = {}
+
+    # 执行钓鱼
+    for _ in range(times):
+        resp = fishing(uid, skip_random_events=True, user_info=user_info)
         if resp['code'] == 1:
             msg = resp['msg']
-            fishing_results.append(f"第{i+1}次钓鱼: {msg}")
-        elif resp['code'] == 2:  # 漂流瓶模式被禁用
-            fishing_results.append(f"第{i+1}次钓鱼: 未能触发漂流瓶。")
-        elif resp['code'] == 3:  # 随机事件模式被禁用
-            fishing_results.append(f"第{i+1}次钓鱼: 未能触发随机事件。")
-    
+            # 统计鱼类结果
+            fish_type = ''.join(filter(lambda x: x in "🐟🦈🦀🦐🐠🐡🌟", msg))
+            if fish_type:
+                result_summary[fish_type] = result_summary.get(fish_type, 0) + 1
+
+    value = cal_all_fish_value(result_summary)
+    actual_cost = cost * 3.0 #修正cost计算
+    judge = {
+        "loss_low": f"（叉腰跺脚气鼓鼓）哈啊——？{actual_cost}円扔进水里都能听个响，结果就这¥{value}的废纸？（突然凑近眯眼）回报率只有{int((value/actual_cost)*100)}%…噗嗤！连街边扭蛋机都比你有尊严啦！快把钱包交给本小姐封印！ヽ(`Д´)ﾉ",
+        "loss_moderate": f"（翘腿晃脚尖冷笑）哇哦~花了¥{actual_cost}抽到价值¥{value}？（掰手指）亏损{int((1-value/actual_cost)*100)}%耶~（突然拍桌）你是故意用脚趾戳计算器的吗！这种垃圾就算喂给流浪猫都会被嫌弃喵～♪",
+        "loss_high": f"（吐舌头做鬼脸）略略略~{int((value/actual_cost)*100)}%回报率？这根本是反向理财天才嘛！（突然掏出小本本记仇）第114514次见证人类智商盆地——（用红笔在你脸上画猪头）下次请直接给我打钱，至少我不会让你亏到内裤穿孔啦！( ´▽｀)",
+        "double_up": f"（发现value>=1.5*actual_cost时甩飞计算器）什…什么！居然赚了这么多了？！（耳朵发红跺脚）绝、绝对是系统BUG吧！才不承认你有狗屎运呢！（偷偷捡回计算器）但…但是分我一半金币的话，可以考虑给你加个「临时幸运笨蛋」称号哦…（声音越来越小）",
+        "normal_profit": f"（托腮斜眼瞟屏幕）哼~赚了{int((value/actual_cost-1)*100)}%就得意了？（突然用指甲刮黑板）这点蚊子腿利润连买奶茶都不够甜诶！（甩出记账本）看好了——你抽卡时浪费的{value//10}小时，换算成时薪都能买一箱泡面了喔！（戳你锁骨）下次请我喝全糖布丁的话...勉强夸你是「庶民经济学入门者」啦～（扭头哼歌）",
+        "huge_loss": f"（当亏损超80%时贴脸嘲讽）诶诶~¥{value}？连成本零头都不到呢！（突然掏出放大镜对准你）让本侦探看看——（惊呼）哇！发现珍稀物种「慈善赌王」！要不要给你颁个「散财童子终身成就奖」呀？奖杯就用你哭唧唧的表情包做叭～（咔嚓拍照声）",
+        "massive_profit": f"（盈利200%以上时抱头蹲防）这不科学——！（从指缝偷看数字）{int((value/actual_cost-1)*100)}%的暴利什么的…（跳起来指鼻子）绝·对·是·诈·骗！快老实交代是不是卖了肾去抽卡！（突然扔出粉笔砸黑板）现在立刻马上！把玄学抽卡口诀交出来！！（＞д＜）",
+        "extreme_loss": f"（亏损99%时歪头装无辜）呐呐~用¥{actual_cost}换¥{value}？（突然捶地狂笑）这不是把钞票塞进碎纸机还自带BGM嘛！要不要借你本小姐的数学笔记？（唰啦展开全是涂鸦的笔记本）看好了哦~「抽卡前请先拨打精神病院热线」用荧光笔标重点了呢～☆",
+        "mild_profit": f"（盈利250%时背对屏幕碎碎念）区区{int((value/actual_cost-1)*100)}%涨幅…（突然转身泪眼汪汪）肯、肯定把后半辈子的运气都透支了吧？！（掏出塔罗牌乱甩）看我逆转因果律——（牌面突然自燃）呜哇！连占卜都站在笨蛋那边？！这不公平！！( TДT)",
+        "zero_value": f"（当value=0时用扫帚戳你）醒醒啦守财奴！（转扫帚当麦克风）恭喜解锁隐藏成就「氪金黑洞」！您刚才支付的¥{actual_cost}已成功转化为——（压低声音）宇宙暗物质、开发组年终奖以及本小姐的新皮肤！（转圈撒虚拟彩带）要放鞭炮庆祝吗？噼里啪啦嘭——！（其实是砸键盘声）",
+        "extreme_profit": f"（盈利300%以上时瞳孔地震）这这这{int((value/actual_cost-1)*100)}%的收益率…（突然揪住你领子摇晃）快说！是不是绑架了程序猿的猫？！（掏出纸笔）现在立刻签这份《欧气共享契约》！否则就把你账号名叫「人傻钱多速来」挂公告栏哦！我认真的！！（契约上画满小恶魔涂鸦）"
+    }
+
+    # 汇总结果文本
+    summary_message = f"{command_name}汇总结果：\n"
+    if result_summary:
+        summary_message += "\n".join(f"{fish}: {count} 条" for fish, count in result_summary.items())
+    else:
+        summary_message += "你没有钓到任何有价值的鱼..."
+
+    summary_message += f"\n\n总价值：{value} 金币\n总花费：{actual_cost} 金币\n"
+
+    if value / actual_cost < 1 and value / actual_cost >= 0.7:
+        summary_message += judge["loss_low"]
+    elif value / actual_cost < 0.7 and value / actual_cost >= 0.3:
+        summary_message += judge["loss_moderate"]
+    elif value / actual_cost < 0.3 and value / actual_cost >= 0.1:
+        summary_message += judge["loss_high"]
+    elif value / actual_cost > 0.01 and value / actual_cost < 0.1:
+        summary_message += judge["huge_loss"]
+    elif value / actual_cost > 1 and value / actual_cost <= 1.5:
+        summary_message += judge["normal_profit"]
+    elif value / actual_cost > 1.5 and value / actual_cost <= 2:
+        summary_message += judge["double_up"]
+    elif value / actual_cost > 2 and value / actual_cost <= 2.5:
+        summary_message += judge["massive_profit"]
+    elif value / actual_cost > 2.5 and value / actual_cost <= 3:
+        summary_message += judge["mild_profit"]
+    elif value / actual_cost > 3:
+        summary_message += judge["extreme_profit"]
+    elif value / actual_cost == 0.01:
+        summary_message += judge["extreme_loss"]
+    elif value == 0:
+        summary_message += judge["zero_value"]
+
+    # 保存用户信息
     lock = asyncio.Lock()
     async with lock:
         dbPath = os.path.join(userPath, 'fishing/db')
@@ -470,427 +526,31 @@ async def ten连_fishing(bot, ev):
         total_info = loadData(user_info_path)
         total_info[uid] = user_info
         saveData(total_info, user_info_path)
-    
-    # 一次性发送所有结果
-    await bot.send(ev, '\n'.join(fishing_results), at_sender=True)
 
+    # 发送最终结果
+    await bot.send(ev, summary_message, at_sender=True)
+
+
+# 重新定义触发函数
+@sv.on_fullmatch('十连钓鱼')
+async def ten_fishing(bot, ev):
+    await multi_fishing(bot, ev, 10, 95, '十连钓鱼')
 
 @sv.on_fullmatch('百连钓鱼')
 async def hundred_fishing(bot, ev):
-    """
-    百连钓鱼 - 消耗 900 个饭团并进行 100 次钓鱼
-    """
-    uid = ev.user_id
-#    if ev.user_id in BLACKUSERS:
-#        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
-#        return
-    await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' +no, at_sender=True)
-    return
-    user_info = getUserInfo(uid)
-    # 检查钓鱼冷却时间
-    if left_time(uid) > 0 and not config.DEBUG_MODE:
-        await bot.send(ev, random.choice(cool_time_serif) + f'({int(left_time(uid))}s)')
-        return
+    await multi_fishing(bot, ev, 100, 900, '百连钓鱼')
 
-    # 检查鱼饵数量
-    if user_info['fish'].get('🍙', 0) < 900:
-        await bot.send(ev, '百连钓鱼需要 900 个饭团，您的饭团不足！')
-        return
-
-    # 启动钓鱼冷却
-    start_cd(uid)
-
-    # 消耗 900 个饭团
-    decrease_value(uid, 'fish', '🍙', 900, user_info)
-    await bot.send(ev, '祝您在本次钓鱼中取得好运~')
-
-    # 汇总结果字典
-    result_summary = {}
-
-    # 执行 100 次钓鱼
-    for _ in range(100):
-        resp = await fishing(uid, skip_random_events=True, user_info=user_info)
-        if resp['code'] == 1:
-            msg = resp['msg']
-            # 统计鱼类结果
-            fish_type = ''.join(filter(lambda x: x in "🐟🦈🦀🦐🐠🐡🌟", msg))
-            if fish_type:
-                result_summary[fish_type] = result_summary.get(fish_type, 0) + 1
-
-    value = cal_all_fish_value(result_summary)
-    cost = 900 * 3.0
-
-    judge = {
-        "loss_low": f"（叉腰跺脚气鼓鼓）哈啊——？{cost}円扔进水里都能听个响，结果就这¥{value}的废纸？（突然凑近眯眼）回报率只有{int((value/cost)*100)}%…噗嗤！连街边扭蛋机都比你有尊严啦！快把钱包交给本小姐封印！ヽ(`Д´)ﾉ",
-        "loss_moderate": f"（翘腿晃脚尖冷笑）哇哦~花了¥{cost}抽到价值¥{value}？（掰手指）亏损{int((1-value/cost)*100)}%耶~（突然拍桌）你是故意用脚趾戳计算器的吗！这种垃圾就算喂给流浪猫都会被嫌弃喵～♪",
-        "loss_high": f"（吐舌头做鬼脸）略略略~{int((value/cost)*100)}%回报率？这根本是反向理财天才嘛！（突然掏出小本本记仇）第114514次见证人类智商盆地——（用红笔在你脸上画猪头）下次请直接给我打钱，至少我不会让你亏到内裤穿孔啦！( ´▽｀)",
-        "double_up": f"（发现value>=1.5*cost时甩飞计算器）什…什么！居然赚了这么多了？！（耳朵发红跺脚）绝、绝对是系统BUG吧！才不承认你有狗屎运呢！（偷偷捡回计算器）但…但是分我一半金币的话，可以考虑给你加个「临时幸运笨蛋」称号哦…（声音越来越小）",
-        "normal_profit": f"（托腮斜眼瞟屏幕）哼~赚了{int((value/cost-1)*100)}%就得意了？（突然用指甲刮黑板）这点蚊子腿利润连买奶茶都不够甜诶！（甩出记账本）看好了——你抽卡时浪费的{value//10}小时，换算成时薪都能买一箱泡面了喔！（戳你锁骨）下次请我喝全糖布丁的话...勉强夸你是「庶民经济学入门者」啦～（扭头哼歌）",
-        "huge_loss": f"（当亏损超80%时贴脸嘲讽）诶诶~¥{value}？连成本零头都不到呢！（突然掏出放大镜对准你）让本侦探看看——（惊呼）哇！发现珍稀物种「慈善赌王」！要不要给你颁个「散财童子终身成就奖」呀？奖杯就用你哭唧唧的表情包做叭～（咔嚓拍照声）",
-        "massive_profit": f"（盈利200%以上时抱头蹲防）这不科学——！（从指缝偷看数字）{int((value/cost-1)*100)}%的暴利什么的…（跳起来指鼻子）绝·对·是·诈·骗！快老实交代是不是卖了肾去抽卡！（突然扔出粉笔砸黑板）现在立刻马上！把玄学抽卡口诀交出来！！（＞д＜）",
-        "extreme_loss": f"（亏损99%时歪头装无辜）呐呐~用¥{cost}换¥{value}？（突然捶地狂笑）这不是把钞票塞进碎纸机还自带BGM嘛！要不要借你本小姐的数学笔记？（唰啦展开全是涂鸦的笔记本）看好了哦~「抽卡前请先拨打精神病院热线」用荧光笔标重点了呢～☆",
-        "mild_profit": f"（盈利250%时背对屏幕碎碎念）区区{int((value/cost-1)*100)}%涨幅…（突然转身泪眼汪汪）肯、肯定把后半辈子的运气都透支了吧？！（掏出塔罗牌乱甩）看我逆转因果律——（牌面突然自燃）呜哇！连占卜都站在笨蛋那边？！这不公平！！( TДT)",
-        "zero_value": f"（当value=0时用扫帚戳你）醒醒啦守财奴！（转扫帚当麦克风）恭喜解锁隐藏成就「氪金黑洞」！您刚才支付的¥{cost}已成功转化为——（压低声音）宇宙暗物质、开发组年终奖以及本小姐的新皮肤！（转圈撒虚拟彩带）要放鞭炮庆祝吗？噼里啪啦嘭——！（其实是砸键盘声）",
-        "extreme_profit": f"（盈利300%以上时瞳孔地震）这这这{int((value/cost-1)*100)}%的收益率…（突然揪住你领子摇晃）快说！是不是绑架了程序猿的猫？！（掏出纸笔）现在立刻签这份《欧气共享契约》！否则就把你账号名叫「人傻钱多速来」挂公告栏哦！我认真的！！（契约上画满小恶魔涂鸦）"
-    }
-    # 汇总结果文本
-    summary_message = "百连钓鱼汇总结果：\n"
-    if result_summary:
-        summary_message += "\n".join(f"{fish}: {count} 条" for fish, count in result_summary.items())
-    else:
-        summary_message += "你没有钓到任何有价值的鱼..."
-
-    summary_message += f"\n\n总价值：{value} 金币\n总花费：{cost} 金币\n"
-
-    if value / cost < 1 and value / cost >= 0.7:
-        summary_message += judge["loss_low"]
-    elif value / cost < 0.7 and value / cost >= 0.3:
-        summary_message += judge["loss_moderate"]
-    elif value / cost < 0.3 and value / cost >= 0.1:
-        summary_message += judge["loss_high"]
-    elif value / cost > 0.01 and value / cost < 0.1:
-        summary_message += judge["huge_loss"]
-    elif value / cost > 1 and value / cost <= 1.5:
-        summary_message += judge["normal_profit"]
-    elif value / cost > 1.5 and value / cost <= 2:
-        summary_message += judge["double_up"]
-    elif value / cost > 2 and value / cost <= 2.5:
-        summary_message += judge["massive_profit"]
-    elif value / cost > 2.5 and value / cost <= 3:
-        summary_message += judge["mild_profit"]
-    elif value / cost > 3:
-        summary_message += judge["extreme_profit"]
-    elif value / cost == 0.01:
-        summary_message += judge["extreme_loss"]
-    elif value == 0:
-        summary_message += judge["zero_value"]
-
-
-    # 保存用户信息
-    lock = asyncio.Lock()
-    async with lock:
-        dbPath = os.path.join(userPath, 'fishing/db')
-        user_info_path = os.path.join(dbPath, 'user_info.json')
-        total_info = loadData(user_info_path)
-        total_info[uid] = user_info
-        saveData(total_info, user_info_path)
-
-    # 发送最终结果
-    await bot.send(ev, summary_message, at_sender=True)
-
-####################################################################
-@sv.on_fullmatch('千连钓鱼12344')
+@sv.on_fullmatch('千连钓鱼')
 async def thousand_fishing(bot, ev):
-    """
-    百连钓鱼 - 消耗 9000 个饭团并进行 1000 次钓鱼
-    """
-    uid = ev.user_id
-    if ev.user_id in BLACKUSERS:
-        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
-        return
-    user_info = getUserInfo(uid)
-    
-    # 检查钓鱼冷却时间
-    if left_time(uid) > 0 and not config.DEBUG_MODE:
-        await bot.send(ev, random.choice(cool_time_serif) + f'({int(left_time(uid))}s)')
-        return
+    await multi_fishing(bot, ev, 1000, 9000, '千连钓鱼')
 
-    # 检查鱼饵数量
-    if user_info['fish'].get('🍙', 0) < 9000:
-        await bot.send(ev, '千连钓鱼需要 9000 个饭团，您的饭团不足！')
-        return
-
-    # 启动钓鱼冷却
-    start_cd(uid)
-
-    # 消耗 900 个饭团
-    decrease_value(uid, 'fish', '🍙', 9000, user_info)
-    await bot.send(ev, '你开始了千连钓鱼！')
-
-    # 汇总结果字典
-    result_summary = {}
-
-    # 执行 100 次钓鱼
-    for _ in range(1000):
-        resp = await fishing(uid, skip_random_events=True, user_info=user_info)
-        if resp['code'] == 1:
-            msg = resp['msg']
-            # 统计鱼类结果
-            fish_type = ''.join(filter(lambda x: x in "🐟🦈🦀🦐🐠🐡🌟", msg))
-            if fish_type:
-                result_summary[fish_type] = result_summary.get(fish_type, 0) + 1
-
-    value = cal_all_fish_value(result_summary)
-    cost = 9000 * 3.0
-
-    judge = {
-        "loss_low": f"（叉腰跺脚气鼓鼓）哈啊——？{cost}円扔进水里都能听个响，结果就这¥{value}的废纸？（突然凑近眯眼）回报率只有{int((value/cost)*100)}%…噗嗤！连街边扭蛋机都比你有尊严啦！快把钱包交给本小姐封印！ヽ(`Д´)ﾉ",
-        "loss_moderate": f"（翘腿晃脚尖冷笑）哇哦~花了¥{cost}抽到价值¥{value}？（掰手指）亏损{int((1-value/cost)*100)}%耶~（突然拍桌）你是故意用脚趾戳计算器的吗！这种垃圾就算喂给流浪猫都会被嫌弃喵～♪",
-        "loss_high": f"（吐舌头做鬼脸）略略略~{int((value/cost)*100)}%回报率？这根本是反向理财天才嘛！（突然掏出小本本记仇）第114514次见证人类智商盆地——（用红笔在你脸上画猪头）下次请直接给我打钱，至少我不会让你亏到内裤穿孔啦！( ´▽｀)",
-        "double_up": f"（发现value>=1.5*cost时甩飞计算器）什…什么！居然赚了这么多了？！（耳朵发红跺脚）绝、绝对是系统BUG吧！才不承认你有狗屎运呢！（偷偷捡回计算器）但…但是分我一半金币的话，可以考虑给你加个「临时幸运笨蛋」称号哦…（声音越来越小）",
-        "normal_profit": f"（托腮斜眼瞟屏幕）哼~赚了{int((value/cost-1)*100)}%就得意了？（突然用指甲刮黑板）这点蚊子腿利润连买奶茶都不够甜诶！（甩出记账本）看好了——你抽卡时浪费的{value//10}小时，换算成时薪都能买一箱泡面了喔！（戳你锁骨）下次请我喝全糖布丁的话...勉强夸你是「庶民经济学入门者」啦～（扭头哼歌）",
-        "huge_loss": f"（当亏损超80%时贴脸嘲讽）诶诶~¥{value}？连成本零头都不到呢！（突然掏出放大镜对准你）让本侦探看看——（惊呼）哇！发现珍稀物种「慈善赌王」！要不要给你颁个「散财童子终身成就奖」呀？奖杯就用你哭唧唧的表情包做叭～（咔嚓拍照声）",
-        "massive_profit": f"（盈利200%以上时抱头蹲防）这不科学——！（从指缝偷看数字）{int((value/cost-1)*100)}%的暴利什么的…（跳起来指鼻子）绝·对·是·诈·骗！快老实交代是不是卖了肾去抽卡！（突然扔出粉笔砸黑板）现在立刻马上！把玄学抽卡口诀交出来！！（＞д＜）",
-        "extreme_loss": f"（亏损99%时歪头装无辜）呐呐~用¥{cost}换¥{value}？（突然捶地狂笑）这不是把钞票塞进碎纸机还自带BGM嘛！要不要借你本小姐的数学笔记？（唰啦展开全是涂鸦的笔记本）看好了哦~「抽卡前请先拨打精神病院热线」用荧光笔标重点了呢～☆",
-        "mild_profit": f"（盈利250%时背对屏幕碎碎念）区区{int((value/cost-1)*100)}%涨幅…（突然转身泪眼汪汪）肯、肯定把后半辈子的运气都透支了吧？！（掏出塔罗牌乱甩）看我逆转因果律——（牌面突然自燃）呜哇！连占卜都站在笨蛋那边？！这不公平！！( TДT)",
-        "zero_value": f"（当value=0时用扫帚戳你）醒醒啦守财奴！（转扫帚当麦克风）恭喜解锁隐藏成就「氪金黑洞」！您刚才支付的¥{cost}已成功转化为——（压低声音）宇宙暗物质、开发组年终奖以及本小姐的新皮肤！（转圈撒虚拟彩带）要放鞭炮庆祝吗？噼里啪啦嘭——！（其实是砸键盘声）",
-        "extreme_profit": f"（盈利300%以上时瞳孔地震）这这这{int((value/cost-1)*100)}%的收益率…（突然揪住你领子摇晃）快说！是不是绑架了程序猿的猫？！（掏出纸笔）现在立刻签这份《欧气共享契约》！否则就把你账号名叫「人傻钱多速来」挂公告栏哦！我认真的！！（契约上画满小恶魔涂鸦）"
-    }
-    # 汇总结果文本
-    summary_message = "千连钓鱼汇总结果：\n"
-    if result_summary:
-        summary_message += "\n".join(f"{fish}: {count} 条" for fish, count in result_summary.items())
-    else:
-        summary_message += "你没有钓到任何有价值的鱼..."
-
-    summary_message += f"\n\n总价值：{value} 金币\n总花费：{cost} 金币\n"
-
-    if value / cost < 1 and value / cost >= 0.7:
-        summary_message += judge["loss_low"]
-    elif value / cost < 0.7 and value / cost >= 0.3:
-        summary_message += judge["loss_moderate"]
-    elif value / cost < 0.3 and value / cost >= 0.1:
-        summary_message += judge["loss_high"]
-    elif value / cost > 0.01 and value / cost < 0.1:
-        summary_message += judge["huge_loss"]
-    elif value / cost > 1 and value / cost <= 1.5:
-        summary_message += judge["normal_profit"]
-    elif value / cost > 1.5 and value / cost <= 2:
-        summary_message += judge["double_up"]
-    elif value / cost > 2 and value / cost <= 2.5:
-        summary_message += judge["massive_profit"]
-    elif value / cost > 2.5 and value / cost <= 3:
-        summary_message += judge["mild_profit"]
-    elif value / cost > 3:
-        summary_message += judge["extreme_profit"]
-    elif value / cost == 0.01:
-        summary_message += judge["extreme_loss"]
-    elif value == 0:
-        summary_message += judge["zero_value"]
-
-
-    # 保存用户信息
-    lock = asyncio.Lock()
-    async with lock:
-        dbPath = os.path.join(userPath, 'fishing/db')
-        user_info_path = os.path.join(dbPath, 'user_info.json')
-        total_info = loadData(user_info_path)
-        total_info[uid] = user_info
-        saveData(total_info, user_info_path)
-
-    # 发送最终结果
-    await bot.send(ev, summary_message, at_sender=True)
-
-
-####################################################################
-@sv.on_fullmatch('万连钓鱼346346')
+@sv.on_fullmatch('万连钓鱼')
 async def tenthousand_fishing(bot, ev):
-    """
-    万连钓鱼 - 消耗 90000 个饭团并进行 10000 次钓鱼
-    """
-    uid = ev.user_id
-    if ev.user_id in BLACKUSERS:
-        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
-        return
-    user_info = getUserInfo(uid)
-    
-    # 检查钓鱼冷却时间
-    if left_time(uid) > 0 and not config.DEBUG_MODE:
-        await bot.send(ev, random.choice(cool_time_serif) + f'({int(left_time(uid))}s)')
-        return
+    await multi_fishing(bot, ev, 10000, 90000, '万连钓鱼')
 
-    # 检查鱼饵数量
-    if user_info['fish'].get('🍙', 0) < 90000:
-        await bot.send(ev, '万连钓鱼需要 90000 个饭团，您的饭团不足！')
-        return
-
-    # 启动钓鱼冷却
-    start_cd(uid)
-
-    # 消耗 90000 个饭团
-    decrease_value(uid, 'fish', '🍙', 90000, user_info)
-    await bot.send(ev, '你开始了万连钓鱼！')
-
-    # 汇总结果字典
-    result_summary = {}
-
-    # 执行 10000 次钓鱼
-    for _ in range(10000):
-        resp = await fishing(uid, skip_random_events=True, user_info=user_info)
-        if resp['code'] == 1:
-            msg = resp['msg']
-            # 统计鱼类结果
-            fish_type = ''.join(filter(lambda x: x in "🐟🦈🦀🦐🐠🐡🌟", msg))
-            if fish_type:
-                result_summary[fish_type] = result_summary.get(fish_type, 0) + 1
-
-    value = cal_all_fish_value(result_summary)
-    cost = 90000 * 3.0
-
-    judge = {
-        "loss_low": f"（叉腰跺脚气鼓鼓）哈啊——？{cost}円扔进水里都能听个响，结果就这¥{value}的废纸？（突然凑近眯眼）回报率只有{int((value/cost)*100)}%…噗嗤！连街边扭蛋机都比你有尊严啦！快把钱包交给本小姐封印！ヽ(`Д´)ﾉ",
-        "loss_moderate": f"（翘腿晃脚尖冷笑）哇哦~花了¥{cost}抽到价值¥{value}？（掰手指）亏损{int((1-value/cost)*100)}%耶~（突然拍桌）你是故意用脚趾戳计算器的吗！这种垃圾就算喂给流浪猫都会被嫌弃喵～♪",
-        "loss_high": f"（吐舌头做鬼脸）略略略~{int((value/cost)*100)}%回报率？这根本是反向理财天才嘛！（突然掏出小本本记仇）第114514次见证人类智商盆地——（用红笔在你脸上画猪头）下次请直接给我打钱，至少我不会让你亏到内裤穿孔啦！( ´▽｀)",
-        "double_up": f"（发现value>=1.5*cost时甩飞计算器）什…什么！居然赚了这么多了？！（耳朵发红跺脚）绝、绝对是系统BUG吧！才不承认你有狗屎运呢！（偷偷捡回计算器）但…但是分我一半金币的话，可以考虑给你加个「临时幸运笨蛋」称号哦…（声音越来越小）",
-        "normal_profit": f"（托腮斜眼瞟屏幕）哼~赚了{int((value/cost-1)*100)}%就得意了？（突然用指甲刮黑板）这点蚊子腿利润连买奶茶都不够甜诶！（甩出记账本）看好了——你抽卡时浪费的{value//10}小时，换算成时薪都能买一箱泡面了喔！（戳你锁骨）下次请我喝全糖布丁的话...勉强夸你是「庶民经济学入门者」啦～（扭头哼歌）",
-        "huge_loss": f"（当亏损超80%时贴脸嘲讽）诶诶~¥{value}？连成本零头都不到呢！（突然掏出放大镜对准你）让本侦探看看——（惊呼）哇！发现珍稀物种「慈善赌王」！要不要给你颁个「散财童子终身成就奖」呀？奖杯就用你哭唧唧的表情包做叭～（咔嚓拍照声）",
-        "massive_profit": f"（盈利200%以上时抱头蹲防）这不科学——！（从指缝偷看数字）{int((value/cost-1)*100)}%的暴利什么的…（跳起来指鼻子）绝·对·是·诈·骗！快老实交代是不是卖了肾去抽卡！（突然扔出粉笔砸黑板）现在立刻马上！把玄学抽卡口诀交出来！！（＞д＜）",
-        "extreme_loss": f"（亏损99%时歪头装无辜）呐呐~用¥{cost}换¥{value}？（突然捶地狂笑）这不是把钞票塞进碎纸机还自带BGM嘛！要不要借你本小姐的数学笔记？（唰啦展开全是涂鸦的笔记本）看好了哦~「抽卡前请先拨打精神病院热线」用荧光笔标重点了呢～☆",
-        "mild_profit": f"（盈利250%时背对屏幕碎碎念）区区{int((value/cost-1)*100)}%涨幅…（突然转身泪眼汪汪）肯、肯定把后半辈子的运气都透支了吧？！（掏出塔罗牌乱甩）看我逆转因果律——（牌面突然自燃）呜哇！连占卜都站在笨蛋那边？！这不公平！！( TДT)",
-        "zero_value": f"（当value=0时用扫帚戳你）醒醒啦守财奴！（转扫帚当麦克风）恭喜解锁隐藏成就「氪金黑洞」！您刚才支付的¥{cost}已成功转化为——（压低声音）宇宙暗物质、开发组年终奖以及本小姐的新皮肤！（转圈撒虚拟彩带）要放鞭炮庆祝吗？噼里啪啦嘭——！（其实是砸键盘声）",
-        "extreme_profit": f"（盈利300%以上时瞳孔地震）这这这{int((value/cost-1)*100)}%的收益率…（突然揪住你领子摇晃）快说！是不是绑架了程序猿的猫？！（掏出纸笔）现在立刻签这份《欧气共享契约》！否则就把你账号名叫「人傻钱多速来」挂公告栏哦！我认真的！！（契约上画满小恶魔涂鸦）"
-    }
-    # 汇总结果文本
-    summary_message = "万连钓鱼汇总结果：\n"
-    if result_summary:
-        summary_message += "\n".join(f"{fish}: {count} 条" for fish, count in result_summary.items())
-    else:
-        summary_message += "你没有钓到任何有价值的鱼..."
-
-    summary_message += f"\n\n总价值：{value} 金币\n总花费：{cost} 金币\n"
-
-    if value / cost < 1 and value / cost >= 0.7:
-        summary_message += judge["loss_low"]
-    elif value / cost < 0.7 and value / cost >= 0.3:
-        summary_message += judge["loss_moderate"]
-    elif value / cost < 0.3 and value / cost >= 0.1:
-        summary_message += judge["loss_high"]
-    elif value / cost > 0.01 and value / cost < 0.1:
-        summary_message += judge["huge_loss"]
-    elif value / cost > 1 and value / cost <= 1.5:
-        summary_message += judge["normal_profit"]
-    elif value / cost > 1.5 and value / cost <= 2:
-        summary_message += judge["double_up"]
-    elif value / cost > 2 and value / cost <= 2.5:
-        summary_message += judge["massive_profit"]
-    elif value / cost > 2.5 and value / cost <= 3:
-        summary_message += judge["mild_profit"]
-    elif value / cost > 3:
-        summary_message += judge["extreme_profit"]
-    elif value / cost == 0.01:
-        summary_message += judge["extreme_loss"]
-    elif value == 0:
-        summary_message += judge["zero_value"]
-
-
-    # 保存用户信息
-    lock = asyncio.Lock()
-    async with lock:
-        dbPath = os.path.join(userPath, 'fishing/db')
-        user_info_path = os.path.join(dbPath, 'user_info.json')
-        total_info = loadData(user_info_path)
-        total_info[uid] = user_info
-        saveData(total_info, user_info_path)
-
-    # 发送最终结果
-    await bot.send(ev, summary_message, at_sender=True)
-
-
-####################################################################
 @sv.on_fullmatch('十万连钓鱼')
-async def hunthousand_fishing(bot, ev):
-    """
-    十万连钓鱼 - 消耗 900000 个饭团并进行 100000 次钓鱼
-    """
-    uid = ev.user_id
-#    if ev.user_id in BLACKUSERS:
-#        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
-#        return
-    await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' +no, at_sender=True)
-    return
-    user_info = getUserInfo(uid)
-    
-    # 检查钓鱼冷却时间
-    if left_time(uid) > 0 and not config.DEBUG_MODE:
-        await bot.send(ev, random.choice(cool_time_serif) + f'({int(left_time(uid))}s)')
-        return
-
-    # 检查鱼饵数量
-    if user_info['fish'].get('🍙', 0) < 900000:
-        await bot.send(ev, '十万连钓鱼需要 900000 个饭团，您的饭团不足！')
-        return
-
-    # 启动钓鱼冷却
-    start_cd(uid)
-
-    # 消耗 900000 个饭团
-    decrease_value(uid, 'fish', '🍙', 900000, user_info)
-    await bot.send(ev, '你开始了十万连钓鱼！')
-
-    # 汇总结果字典
-    result_summary = {}
-
-    # 执行 100000 次钓鱼
-    for _ in range(100000):
-        resp = await fishing(uid, skip_random_events=True, user_info=user_info)
-        if resp['code'] == 1:
-            msg = resp['msg']
-            # 统计鱼类结果
-            fish_type = ''.join(filter(lambda x: x in "🐟🦈🦀🦐🐠🐡🌟", msg))
-            if fish_type:
-                result_summary[fish_type] = result_summary.get(fish_type, 0) + 1
-
-    value = cal_all_fish_value(result_summary)
-    cost = 900000 * 3.0
-
-    judge = {
-        "loss_low": f"（叉腰跺脚气鼓鼓）哈啊——？{cost}円扔进水里都能听个响，结果就这¥{value}的废纸？（突然凑近眯眼）回报率只有{int((value/cost)*100)}%…噗嗤！连街边扭蛋机都比你有尊严啦！快把钱包交给本小姐封印！ヽ(`Д´)ﾉ",
-        "loss_moderate": f"（翘腿晃脚尖冷笑）哇哦~花了¥{cost}抽到价值¥{value}？（掰手指）亏损{int((1-value/cost)*100)}%耶~（突然拍桌）你是故意用脚趾戳计算器的吗！这种垃圾就算喂给流浪猫都会被嫌弃喵～♪",
-        "loss_high": f"（吐舌头做鬼脸）略略略~{int((value/cost)*100)}%回报率？这根本是反向理财天才嘛！（突然掏出小本本记仇）第114514次见证人类智商盆地——（用红笔在你脸上画猪头）下次请直接给我打钱，至少我不会让你亏到内裤穿孔啦！( ´▽｀)",
-        "double_up": f"（发现value>=1.5*cost时甩飞计算器）什…什么！居然赚了这么多了？！（耳朵发红跺脚）绝、绝对是系统BUG吧！才不承认你有狗屎运呢！（偷偷捡回计算器）但…但是分我一半金币的话，可以考虑给你加个「临时幸运笨蛋」称号哦…（声音越来越小）",
-        "normal_profit": f"（托腮斜眼瞟屏幕）哼~赚了{int((value/cost-1)*100)}%就得意了？（突然用指甲刮黑板）这点蚊子腿利润连买奶茶都不够甜诶！（甩出记账本）看好了——你抽卡时浪费的{value//10}小时，换算成时薪都能买一箱泡面了喔！（戳你锁骨）下次请我喝全糖布丁的话...勉强夸你是「庶民经济学入门者」啦～（扭头哼歌）",
-        "huge_loss": f"（当亏损超80%时贴脸嘲讽）诶诶~¥{value}？连成本零头都不到呢！（突然掏出放大镜对准你）让本侦探看看——（惊呼）哇！发现珍稀物种「慈善赌王」！要不要给你颁个「散财童子终身成就奖」呀？奖杯就用你哭唧唧的表情包做叭～（咔嚓拍照声）",
-        "massive_profit": f"（盈利200%以上时抱头蹲防）这不科学——！（从指缝偷看数字）{int((value/cost-1)*100)}%的暴利什么的…（跳起来指鼻子）绝·对·是·诈·骗！快老实交代是不是卖了肾去抽卡！（突然扔出粉笔砸黑板）现在立刻马上！把玄学抽卡口诀交出来！！（＞д＜）",
-        "extreme_loss": f"（亏损99%时歪头装无辜）呐呐~用¥{cost}换¥{value}？（突然捶地狂笑）这不是把钞票塞进碎纸机还自带BGM嘛！要不要借你本小姐的数学笔记？（唰啦展开全是涂鸦的笔记本）看好了哦~「抽卡前请先拨打精神病院热线」用荧光笔标重点了呢～☆",
-        "mild_profit": f"（盈利250%时背对屏幕碎碎念）区区{int((value/cost-1)*100)}%涨幅…（突然转身泪眼汪汪）肯、肯定把后半辈子的运气都透支了吧？！（掏出塔罗牌乱甩）看我逆转因果律——（牌面突然自燃）呜哇！连占卜都站在笨蛋那边？！这不公平！！( TДT)",
-        "zero_value": f"（当value=0时用扫帚戳你）醒醒啦守财奴！（转扫帚当麦克风）恭喜解锁隐藏成就「氪金黑洞」！您刚才支付的¥{cost}已成功转化为——（压低声音）宇宙暗物质、开发组年终奖以及本小姐的新皮肤！（转圈撒虚拟彩带）要放鞭炮庆祝吗？噼里啪啦嘭——！（其实是砸键盘声）",
-        "extreme_profit": f"（盈利300%以上时瞳孔地震）这这这{int((value/cost-1)*100)}%的收益率…（突然揪住你领子摇晃）快说！是不是绑架了程序猿的猫？！（掏出纸笔）现在立刻签这份《欧气共享契约》！否则就把你账号名叫「人傻钱多速来」挂公告栏哦！我认真的！！（契约上画满小恶魔涂鸦）"
-    }
-    # 汇总结果文本
-    summary_message = "十万连钓鱼汇总结果：\n"
-    if result_summary:
-        summary_message += "\n".join(f"{fish}: {count} 条" for fish, count in result_summary.items())
-    else:
-        summary_message += "你没有钓到任何有价值的鱼..."
-
-    summary_message += f"\n\n总价值：{value} 金币\n总花费：{cost} 金币\n"
-
-    if value / cost < 1 and value / cost >= 0.7:
-        summary_message += judge["loss_low"]
-    elif value / cost < 0.7 and value / cost >= 0.3:
-        summary_message += judge["loss_moderate"]
-    elif value / cost < 0.3 and value / cost >= 0.1:
-        summary_message += judge["loss_high"]
-    elif value / cost > 0.01 and value / cost < 0.1:
-        summary_message += judge["huge_loss"]
-    elif value / cost > 1 and value / cost <= 1.5:
-        summary_message += judge["normal_profit"]
-    elif value / cost > 1.5 and value / cost <= 2:
-        summary_message += judge["double_up"]
-    elif value / cost > 2 and value / cost <= 2.5:
-        summary_message += judge["massive_profit"]
-    elif value / cost > 2.5 and value / cost <= 3:
-        summary_message += judge["mild_profit"]
-    elif value / cost > 3:
-        summary_message += judge["extreme_profit"]
-    elif value / cost == 0.01:
-        summary_message += judge["extreme_loss"]
-    elif value == 0:
-        summary_message += judge["zero_value"]
-
-
-    # 保存用户信息
-    lock = asyncio.Lock()
-    async with lock:
-        dbPath = os.path.join(userPath, 'fishing/db')
-        user_info_path = os.path.join(dbPath, 'user_info.json')
-        total_info = loadData(user_info_path)
-        total_info[uid] = user_info
-        saveData(total_info, user_info_path)
-
-    # 发送最终结果
-    await bot.send(ev, summary_message, at_sender=True)
-
+async def hundredthousand_fishing(bot, ev):
+    await multi_fishing(bot, ev, 100000, 900000, '十万连钓鱼')
 
 ####################################################################
 @sv.on_prefix('#买鱼饵', '#买饭团', '#买🍙', '#购买饭团', '买鱼饵', '买🍙', '购买鱼饵', '购买饭团')
@@ -915,9 +575,9 @@ async def buy_bait_func(bot, ev):
     if user_gold<num * config.BAIT_PRICE:
         await bot.send(ev, '金币不足喔...' + no)
         return
-    await buy_bait(uid, num)
+    buy_bait(uid, num)
 #    if not uid % 173 and not uid % 1891433 and not uid % 6:
-#        await money.increase_user_money(uid, 'gold', num * config.BAIT_PRICE * 0.04)
+#        money.increase_user_money(uid, 'gold', num * config.BAIT_PRICE * 0.04)
     await bot.send(ev, f'已经成功购买{num}个鱼饵啦~(金币-{num * config.BAIT_PRICE})')
 buy_bottle_cmd = [i + j + k for i in ['#', '＃']
                   for j in ['买', '购买'] for k in ['漂流瓶', '✉']]
@@ -942,7 +602,7 @@ async def buy_bottle_func(bot, ev):
     if user_gold < num * config.BOTTLE_PRICE:
         await bot.send(ev, '金币不足喔...' + no)
         return
-    await buy_bottle(uid, num)
+    buy_bottle(uid, num)
     await bot.send(ev, f'成功买下{num}个漂流瓶~(金币-{num * config.BOTTLE_PRICE})')
 
 open_bag_command = [i + j + k for i in ['#', '＃', '']
@@ -1021,7 +681,7 @@ async def sell_small_fish(bot, ev):
     for fish in fishes:
         result.append(q_sell_fish(uid, fish, 9999, user_info))
 
-    await money.increase_user_money(uid, 'gold', get_gold)
+    money.increase_user_money(uid, 'gold', get_gold)
     lock = asyncio.Lock()
     async with lock:
         dbPath = os.path.join(userPath, 'fishing/db')
@@ -1057,7 +717,7 @@ async def sell_all_fish(bot, ev):
     for fish in fishes:
         result.append(all_sell_fish(uid, fish, 99999, user_info))
 
-    await money.increase_user_money(uid, 'gold', get_gold)
+    money.increase_user_money(uid, 'gold', get_gold)
     lock = asyncio.Lock()
     async with lock:
         dbPath = os.path.join(userPath, 'fishing/db')
@@ -1201,7 +861,7 @@ async def comment_bottle_func(bot, ev):
     content = split_msg[1].strip()
     result = add_comment(bottle_id, uid, content)
     if result.get('code'):
-        await money.reduce_user_money(uid, 'gold', config.COMMENT_PRICE)
+        money.reduce_user_money(uid, 'gold', config.COMMENT_PRICE)
         try:
             await bot.send_group_msg(group_id=config.ADMIN_GROUP, message=f'{uid}对{bottle_id}号瓶子进行了评论：{content}')
         except Exception as e:
@@ -1467,16 +1127,16 @@ async def transfer_money(bot, ev):
         return
     
     # 执行转账
-    reduce_result = await money.reduce_user_money(sender_uid, 'gold', total_amount)
+    reduce_result = money.reduce_user_money(sender_uid, 'gold', total_amount)
     if not reduce_result:  # 检查扣款是否成功
         await bot.send(ev, '转账操作失败，请稍后再试')
         return
         
     # 扣款成功后，再给接收者增加金币
-    increase_result = await money.increase_user_money(recipient_uid, 'gold', amount)
+    increase_result = money.increase_user_money(recipient_uid, 'gold', amount)
     if not increase_result:  # 检查增加金币是否成功
         # 如果收款失败，需要退还扣除的金币
-        await money.increase_user_money(sender_uid, 'gold', total_amount)
+        money.increase_user_money(sender_uid, 'gold', total_amount)
         await bot.send(ev, '转账失败，已退还金币')
         return
         
@@ -1502,7 +1162,7 @@ async def admin_add_money(bot, ev):
         return
     
     # 执行打款
-    await money.increase_user_money(target_uid, 'gold', amount)
+    money.increase_user_money(target_uid, 'gold', amount)
         
     await bot.send(ev, f'已向 {target_uid} 打款 {amount} 金币', at_sender=True)
     return
@@ -1534,7 +1194,7 @@ async def admin_reduce_money(bot, ev):
     deduct_amount = min(amount, target_gold)
     
     # 执行扣款
-    await money.reduce_user_money(target_uid, 'gold', deduct_amount)
+    money.reduce_user_money(target_uid, 'gold', deduct_amount)
         
     await bot.send(ev, f'已从 {target_uid} 扣款 {deduct_amount} 金币', at_sender=True)
     return
@@ -1615,7 +1275,7 @@ async def diabo(bot, ev):
     daily_diabo_count[today] = daily_diabo_count.get(today, 0) + 1  # 增加每日计数
 
     # 5. 发放低保
-    await money.increase_user_money(uid, 'gold', 5000)
+    money.increase_user_money(uid, 'gold', 5000)
     
     # 6. 发送消息
     await bot.send(ev, f"\n已领取今日份低保。\n你现在有{user_gold + 5000}金币" + ok, at_sender=True)

@@ -27,7 +27,7 @@ async def fa_hongbao(bot, ev):
             # 剩余的钱返还给发起人
             remain_money = sum(session.state['hb_list'])
             if not debug_mode:
-                await increase_user_money(session.state['owner'], 'gold', remain_money)
+                increase_user_money(session.state['owner'], 'gold', remain_money)
             session.close()
         else:
             await bot.send(ev, f'当前还有没领完的金币红包~')
@@ -72,7 +72,7 @@ async def fa_hongbao(bot, ev):
     freq.start_cd(ev.user_id)
 
     if not debug_mode:
-        await reduce_user_money(ev.user_id, 'gold', currency)
+        reduce_user_money(ev.user_id, 'gold', currency)
 
     hongbao_list = get_double_mean_money(currency, max_user)
     session = ActSession.from_event('金币红包', ev, usernum_limit = True, max_user = max_user, expire_time=600)
@@ -95,7 +95,7 @@ async def qiang_hongbao(bot, ev):
     if session.is_expire():
         remain_money = sum(session.state['hb_list'])
         if not debug_mode:
-            await increase_user_money(session.state['owner'], 'gold', remain_money)
+            increase_user_money(session.state['owner'], 'gold', remain_money)
         await session.send(ev, f'红包过期，已返还剩余的{remain_money}枚金币')
         session.close()
         return
@@ -106,12 +106,16 @@ async def qiang_hongbao(bot, ev):
         user_gain = session.state['hb_list'].pop()
         session.state['users'].append(ev.user_id)
         if not debug_mode:
-            await increase_user_money(ev.user_id, 'gold', user_gain)
-        await bot.send(ev, f'你抢到了{user_gain}枚金币~', at_sender=True)
+            increase_user_money(ev.user_id, 'gold', user_gain)
+            await bot.send(ev, f'你抢到了{user_gain}枚金币~', at_sender=True)
     if not session.state['hb_list']:
         session.close()
         await bot.send(ev, '红包领完了~')
         return
+
+
+
+
 
 
 

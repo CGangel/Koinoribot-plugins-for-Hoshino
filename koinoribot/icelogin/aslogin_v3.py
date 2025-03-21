@@ -173,7 +173,7 @@ async def as_login_v3(uid, username, qqname, nick_flag):
         i += 1
 
     if not login_flag:
-        await money.increase_user_money(uid, "logindays", 1)  # 签到天数
+        money.increase_user_money(uid, "logindays", 1)  # 签到天数
 
     # === 今日人品值 ===
     h = int(money.get_user_money(uid, "rp")) if login_flag else _hash()  # 如果已经签过到，获取今日的人品值，范围0~100
@@ -195,17 +195,17 @@ async def as_login_v3(uid, username, qqname, nick_flag):
         luckygold_num = max(1, min(5, rp - 90))
         extra_msg += f'☆ 幸运币+{luckygold_num} (人品)\n'  # 幸运币
         luckygold_msg += f'☆ 幸运币+{luckygold_num}\n'
-        await money.increase_user_money(uid, "luckygold", luckygold_num)
+        money.increase_user_money(uid, "luckygold", luckygold_num)
     elif rp == 100 and not login_flag:
         luckygold_num = 10
         extra_msg += f'☆ 幸运币+{luckygold_num} (人品)\n'  # 幸运币
         luckygold_msg += f'☆ 幸运币+{luckygold_num}\n'
-        await money.increase_user_money(uid, "luckygold", luckygold_num)
+        money.increase_user_money(uid, "luckygold", luckygold_num)
     elif rp == 999 and not login_flag:
         luckygold_num = 20
         extra_msg += f'☆ 幸运币+{luckygold_num} (人品)\n'  # 幸运币
         luckygold_msg += f'☆ 幸运币+{luckygold_num}\n'
-        await money.increase_user_money(uid, "luckygold", luckygold_num)
+        money.increase_user_money(uid, "luckygold", luckygold_num)
 
     gold += rp
     logindays = money.get_user_money(uid, "logindays")
@@ -228,8 +228,8 @@ async def as_login_v3(uid, username, qqname, nick_flag):
                 money.set_user_bg_mode(uid, 0)
         num = rp * 5 + birth_flag * 600 + event_flag * 400 + star_add
         gold += birth_flag * 300 + event_flag * 200 + gold_add
-        await money.increase_user_money(uid, "starstone", num)  # 星星
-        await money.increase_user_money(uid, 'gold', gold)  # 金币
+        money.increase_user_money(uid, "starstone", num)  # 星星
+        money.increase_user_money(uid, 'gold', gold)  # 金币
         money.set_user_money(uid, "last_login", int(f'{months}0{days}'))
         money.set_user_money(uid, "rp", h)
         money.set_user_money(uid, "goodluck", good_todo_index)
@@ -543,3 +543,4 @@ def del_custom_bg(uid):
 if __name__ == '__main__':
     qq_list = [10001]
     asyncio.get_event_loop().run_until_complete(as_login_v3(qq_list[0], '名字', '无', 0))
+

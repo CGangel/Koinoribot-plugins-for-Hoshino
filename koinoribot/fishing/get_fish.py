@@ -38,7 +38,7 @@ def getUserInfo(uid):
     return user_info
 
 
-async def fishing(uid, skip_random_events=False, user_info=None):
+def fishing(uid, skip_random_events=False, user_info=None):
     """
         mode=0: 普通鱼竿，
         mode=1: 永不空军，不会钓不到东西
@@ -121,12 +121,12 @@ async def fishing(uid, skip_random_events=False, user_info=None):
         second_choose = random.randint(1, 1000)
         if second_choose <= 800:
             coin_amount = random.randint(1, 30)
-            await money.increase_user_money(uid, 'gold', coin_amount)
+            money.increase_user_money(uid, 'gold', coin_amount)
             result = {'code': 1, 'msg': f'你钓到了一个布包，里面有{coin_amount}枚金币，但是没有钓到鱼...'}
             return result
         else:
             coin_amount = random.randint(1, 3)
-            await money.increase_user_money(uid, 'luckygold', coin_amount)
+            money.increase_user_money(uid, 'luckygold', coin_amount)
             result = {'code': 1, 'msg': f'你钓到了一个锦囊，里面有{coin_amount}枚幸运币，但是没有钓到鱼...'}
             return result
     else:
@@ -134,7 +134,7 @@ async def fishing(uid, skip_random_events=False, user_info=None):
         return result
 
 
-async def sell_fish(uid, fish, num: int = 1):
+def sell_fish(uid, fish, num: int = 1):
     """
         卖鱼
 
@@ -152,7 +152,7 @@ async def sell_fish(uid, fish, num: int = 1):
         num = total_info[uid]['fish'].get(fish)
     decrease_value(uid, 'fish', fish, num)
     get_golds = fish_price[fish] * num
-    await money.increase_user_money(uid, 'gold', get_golds)
+    money.increase_user_money(uid, 'gold', get_golds)
     if fish == '🍙':
         return f'成功退还了{num}个🍙，兑换了{get_golds}枚金币~'
     increase_value(uid, 'statis', 'sell', get_golds)
@@ -191,18 +191,18 @@ def free_fish(uid, fish, num: int = 1):
     return f'{num}{classifier}{fish}成功回到了水里，获得{get_frags}个水心碎片~{addition}'
 
 
-async def buy_bait(uid, num = 1):
+def buy_bait(uid, num = 1):
     """
         买鱼饵
     """
-    await money.reduce_user_money(uid, 'gold', num * config.BAIT_PRICE)
+    money.reduce_user_money(uid, 'gold', num * config.BAIT_PRICE)
     increase_value(uid, 'fish', '🍙', num)
 
-async def buy_bottle(uid, num = 1):
+def buy_bottle(uid, num = 1):
     """
         买漂流瓶
     """
-    await money.reduce_user_money(uid, 'gold', num * config.BOTTLE_PRICE)
+    money.reduce_user_money(uid, 'gold', num * config.BOTTLE_PRICE)
     increase_value(uid, 'fish', '✉', num)
 
 

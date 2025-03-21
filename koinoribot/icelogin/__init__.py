@@ -92,7 +92,7 @@ async def upload_bg(bot, ev):
         msg = f'(将扣除{cost_num}金币)'
     if user_gold > cost_num:
         await bot.send(ev, f'已上传图片~' + msg)
-        await money.reduce_user_money(uid, 'gold', cost_num)
+        money.reduce_user_money(uid, 'gold', cost_num)
     else:
         await bot.send(ev, '金币不足...' + no)
 
