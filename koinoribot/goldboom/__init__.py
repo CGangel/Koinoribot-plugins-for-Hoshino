@@ -135,29 +135,21 @@ class GoldBombSession:
 
         # 判断胜负
         if all_failed:
-            message = '所有玩家都失败了，游戏流局！每人扣除500金币。\n'
-
-            # 使用 asyncio.gather 并发执行扣款操作
-            tasks = [money.reduce_user_money(user_id, 'gold', PENALTY) for user_id in self.players]
-            await asyncio.gather(*tasks)
-
+            message = '所有玩家都失败了，游戏流局！每人扣除1000金币。\n'
             for user_id in self.players:
+                money.reduce_user_money(user_id, 'gold', PENALTY)
                 message += f'{MessageSegment.at(user_id)} 扣除 {PENALTY} 金币。\n'
             await self.bot.send_group_msg(group_id=self.group_id, message=message)
 
         else:
             message = f'恭喜 {MessageSegment.at(winner)} 获胜，获得奖池中的所有金币！\n'
             wining_money = self.players[winner]
-            await money.increase_user_money(winner, 'gold', wining_money)
+            money.increase_user_money(winner, 'gold', wining_money)
             message += f'获得 {wining_money} 金币。\n'
-
-            # 并发扣除失败者的金币
-            loser_tasks = [money.reduce_user_money(user_id, 'gold', PENALTY) for user_id in self.players if user_id != winner]
-            await asyncio.gather(*loser_tasks)
-
             for user_id in self.players:
                 if user_id != winner:
-                    message += f'{MessageSegment.at(user_id)} 扣除 {PENALTY} 金币。\n'
+                     money.reduce_user_money(user_id, 'gold', PENALTY)
+                     message += f'{MessageSegment.at(user_id)} 扣除 {PENALTY} 金币。\n'
             await self.bot.send_group_msg(group_id=self.group_id, message=message)
 
         # 清理会话
