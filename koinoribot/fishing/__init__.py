@@ -321,7 +321,7 @@ has_triggered = []  # 记录已触发的提醒
 # 拼手气红包的金币总量和数量
 REWARD_TOTAL_GOLD = 50000
 REWARD_NUM = 10
-
+bosstime = config.bosstime
 @sv.on_fullmatch('捉萝莉')
 async def catch_Loli(bot, ev):
     """
@@ -333,6 +333,9 @@ async def catch_Loli(bot, ev):
     uid = ev.user_id
     if ev.user_id in BLACKUSERS:
         await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
+        return
+    if bosstime == 0:
+        await bot.send(ev, '\n鱼塘风平浪静，没有发现蠢萝莉' +no, at_sender=True)
         return
     user_info = getUserInfo(uid)
     
@@ -429,13 +432,12 @@ async def multi_fishing(bot, ev, times, cost, command_name):
      command_name: 命令名称，用于输出信息
     """
     uid = ev.user_id
-#    if ev.user_id in BLACKUSERS:
-#        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' + no, at_sender=True)
-#        return
-
-    # 为了避免重复输出，这里只输出一次被占领的信息
-    # await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' + no, at_sender=True)
-    # return
+    if ev.user_id in BLACKUSERS:
+        await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' + no, at_sender=True)
+        return
+    if bosstime == 1:
+        await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' + no, at_sender=True)
+        return
 
     user_info = getUserInfo(uid)
 
@@ -529,6 +531,7 @@ async def multi_fishing(bot, ev, times, cost, command_name):
 
     # 发送最终结果
     await bot.send(ev, summary_message, at_sender=True)
+
 
 
 # 重新定义触发函数

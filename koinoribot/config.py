@@ -148,6 +148,7 @@ bbjb = 0.75                      #miss后爆用户金币的概率
 bjb = 0.3                      #爆萝莉金币的概率
 xinyun_bjb = 0.02               #捉萝莉幸运大奖概率
 jishagold = 10000               #击杀奖励
+bosstime = 1                    #是否开启boss战  0关闭  1开启  其余数字则鱼塘和boss战同时开启
 
 # 钓鱼
 ADMIN_GROUP = 348831286                         # 漂流瓶审核群(必须有一个)
