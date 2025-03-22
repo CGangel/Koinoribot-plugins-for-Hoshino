@@ -56,11 +56,16 @@ class GoldBombSession:
     async def next_turn(self):
         # 找到下一个没有失败的玩家
         while True:
+            # 检查是否所有玩家都失败
+            if all(self.failed.get(user_id, False) for user_id in self.players):
+                await self.end_game()
+                break
+
+            # 增加判断：如果只剩一个玩家且该玩家已失败，则结束游戏
+            if len(self.player_order) == 0:
+                 await self.end_game()
+                 break
             try:
-                # 检查是否所有玩家都失败
-                if all(self.failed.get(user_id, False) for user_id in self.players):
-                    await self.end_game()
-                    break
 
                 next_player = next(self.turn)
                 if not self.failed.get(next_player, False): # 确保玩家没有失败
