@@ -12,7 +12,6 @@ from .._R import get, userPath
 from .util import shift_time_style, update_serif
 from ..utils import chain_reply, saveData, loadData
 from ..config import SEND_FORWARD, FISH_LIST
-
 from .get_fish import fishing, buy_bait, free_fish, sell_fish, change_fishrod, compound_bottle, getUserInfo, \
     increase_value, decrease_value, buy_bottle
 from .serif import cool_time_serif
@@ -26,6 +25,7 @@ from ..utilize import get_double_mean_money
 import os
 import asyncio
 from datetime import datetime, timedelta
+from ..chaogu.stock_utils import get_user_portfolio
 default_info = {
     'fish': {'🐟': 0, '🦐': 0, '🦀': 0, '🐡': 0, '🐠': 0, '🔮': 0, '✉': 0, '🍙': 0},
     'statis': {'free': 0, 'sell': 0, 'total_fish': 0, 'frags': 0},
@@ -422,7 +422,7 @@ async def catch_Loli(bot, ev):
         await send_red_packet(bot, group_id, REWARD_TOTAL_GOLD, REWARD_NUM)
 
 ###########################################################################
-async def multi_fishing(bot, ev, times, cost, command_name):
+async def multi_fishing(bot, ev, times, cost, star_cost, command_name):
     """
     多连钓鱼 - 消耗指定数量的饭团并进行指定次数的钓鱼
      bot: bot 对象
@@ -432,13 +432,19 @@ async def multi_fishing(bot, ev, times, cost, command_name):
      command_name: 命令名称，用于输出信息
     """
     uid = ev.user_id
+    user_starstone = money.get_user_money(uid, 'starstone')
+    if user_starstone < star_cost:
+        await bot.send(ev, '\n呜，一整天的就知道钓鱼......哼，不理你了！', +no, at_sender=True)
+        return
     if ev.user_id in BLACKUSERS:
         await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' + no, at_sender=True)
         return
     if bosstime == 1:
         await bot.send(ev, '\n操作失败，鱼塘被蠢萝莉占领了，请使用“捉萝莉”将蠢萝莉打败吧！' + no, at_sender=True)
         return
-
+    
+    money.reduce_user_money(uid, 'starstone', star_cost)
+    
     user_info = getUserInfo(uid)
 
     # 检查钓鱼冷却时间
@@ -533,27 +539,35 @@ async def multi_fishing(bot, ev, times, cost, command_name):
     await bot.send(ev, summary_message, at_sender=True)
 
 
-
 # 重新定义触发函数
 @sv.on_fullmatch('十连钓鱼')
 async def ten_fishing(bot, ev):
-    await multi_fishing(bot, ev, 10, 95, '十连钓鱼')
+    await multi_fishing(bot, ev, 10, 95, 10, '十连钓鱼')
 
 @sv.on_fullmatch('百连钓鱼')
 async def hundred_fishing(bot, ev):
-    await multi_fishing(bot, ev, 100, 900, '百连钓鱼')
+    await multi_fishing(bot, ev, 100, 900, 100, '百连钓鱼')
 
 @sv.on_fullmatch('千连钓鱼')
 async def thousand_fishing(bot, ev):
-    await multi_fishing(bot, ev, 1000, 9000, '千连钓鱼')
+    if ev.user_id not in SUPERUSERS:
+        await bot.send(ev, f'非管理员账户，禁止执行开发功能！' +no, at_sender=True)
+        return
+    await multi_fishing(bot, ev, 1000, 9000, 0, '千连钓鱼')
 
 @sv.on_fullmatch('万连钓鱼')
 async def tenthousand_fishing(bot, ev):
-    await multi_fishing(bot, ev, 10000, 90000, '万连钓鱼')
+    if ev.user_id not in SUPERUSERS:
+        await bot.send(ev, f'非管理员账户，禁止执行开发功能！' +no, at_sender=True)
+        return
+    await multi_fishing(bot, ev, 10000, 90000, 0, '万连钓鱼')
 
 @sv.on_fullmatch('十万连钓鱼')
 async def hundredthousand_fishing(bot, ev):
-    await multi_fishing(bot, ev, 100000, 900000, '十万连钓鱼')
+    if ev.user_id not in SUPERUSERS:
+        await bot.send(ev, f'非管理员账户，禁止执行开发功能！' +no, at_sender=True)
+        return
+    await multi_fishing(bot, ev, 100000, 900000, 0, '十万连钓鱼')
 
 ####################################################################
 @sv.on_prefix('#买鱼饵', '#买饭团', '#买🍙', '#购买饭团', '买鱼饵', '买🍙', '购买鱼饵', '购买饭团')
@@ -734,7 +748,7 @@ async def sell_all_fish(bot, ev):
 
 
 
-@sv.on_prefix('#卖鱼', '#sell', '#出售', '卖鱼', 'sell', '出售')
+@sv.on_prefix('#出售', '#sell', '#出售', '卖鱼', 'sell', '出售')
 async def free_func(bot, ev):
     message = ev.message.extract_plain_text().strip()
     msg_split = message.split()
@@ -1125,8 +1139,9 @@ async def transfer_money(bot, ev):
         await bot.send(ev, f'\n余额不足，本次转账需要 {total_amount} 金币，包含 {fee} 金币手续费' +no, at_sender=True)
         return
     restgold = gold - total_amount
-    if restgold < 10000:
-        await bot.send(ev, f'\n禁止转账，如果转账，则你将仅剩{restgold}金币。\n请确保转账后剩余金币大于10000。' +no, at_sender=True )
+    min_rest = config.min_rest
+    if restgold < min_rest:
+        await bot.send(ev, f'\n禁止转账，如果转账，则你将仅剩{restgold}金币。\n请确保转账后剩余金币大于{min_rest}。' +no, at_sender=True )
         return
     
     # 执行转账
@@ -1227,6 +1242,7 @@ async def reset_daily_diabo_count():
 # sv.on_startup(reset_daily_diabo_count())
 
 
+
 # 领取低保的命令处理函数
 @sv.on_fullmatch("领低保")
 async def diabo(bot, ev):
@@ -1235,7 +1251,9 @@ async def diabo(bot, ev):
     today = now.date()
     
     
-
+    if config.dibao == 0:
+        await bot.send(ev, "\n低保功能维护中，请稍候再试。" + no, at_sender=True)
+        return
 
     # 1. 检查每日低保数量限制
     if daily_diabo_count.get(today, 0) >= 10:
@@ -1258,8 +1276,14 @@ async def diabo(bot, ev):
     # 3. 获取用户信息 (直接从数据库获取)
     user_info = getUserInfo(uid)
 
+    # 4 检查股票持仓
+    user_portfolio = await get_user_portfolio(uid)  # 使用股票市场模块的函数获取持仓
+    if user_portfolio:  # 如果持仓不为空
+        stock_names = ", ".join(user_portfolio.keys())
+        await bot.send(ev, f"\n检测到你偷偷藏了股票({stock_names})，这么富还想骗低保？" + no, at_sender=True)
+        return
     # 4. 判断是否符合领取条件
-    if user_info['fish']['🍙'] > 1800:
+    if user_info['fish']['🍙'] > 900:
         await bot.send(ev, "\n这么富，还想骗低保？" + no, at_sender=True)
         return
     # 4. 检查背包中是否有鱼
@@ -1268,6 +1292,7 @@ async def diabo(bot, ev):
         if user_info['fish'].get(fish_type, 0) >= 1:  # 如果不存在，默认值为0
             await bot.send(ev, "\n检测到背包中藏了鱼，请一键出售后再尝试领取" + no, at_sender=True)
             return
+
     
     user_gold = money.get_user_money(uid, 'gold')
     if user_gold > 4999:
@@ -1297,3 +1322,4 @@ async def clear_expired_cache():
             if uid in last_diabo_time:
                 del last_diabo_time[uid]
         await asyncio.sleep(3600 * 24) # 每天清理一次
+############################################################################
