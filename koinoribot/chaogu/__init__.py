@@ -15,8 +15,8 @@ from .._R import get, userPath
 from hoshino import Service, priv, R
 from hoshino.typing import CQEvent, MessageSegment
 from .. import money 
+from hoshino.config import SUPERUSERS
 sv = Service('stock_market', manage_priv=priv.ADMIN, enable_on_default=True)
-ADMIN_UID = 180162404 
 no = get('emotion/no.png').cqcode
 ok = get('emotion/ok.png').cqcode
 def get_user_portfolio_exported(user_id):
@@ -823,9 +823,8 @@ async def handle_market_events(bot, ev):
     
 @sv.on_fullmatch('更新股价') # 使用完全匹配，指令必须是 "更新股价"
 async def handle_manual_price_update(bot, ev):
-    admin_uid = ev.user_id
     # 1. 权限验证
-    if admin_uid != ADMIN_UID:
+    if ev.user_id not in SUPERUSERS:
         await bot.send(ev, '权限不足，只有管理员才能手动更新股价。')
         return
 
@@ -925,7 +924,7 @@ async def trigger_manual_event(bot, ev, event_type=None, target_stock=None):
 @sv.on_prefix('更新事件')
 async def handle_manual_event(bot, ev):
     """管理员手动触发市场事件"""
-    if ev.user_id != ADMIN_UID:
+    if ev.user_id not in SUPERUSERS:
         await bot.send(ev, "⚠️ 仅管理员可执行此操作")
         return
     
