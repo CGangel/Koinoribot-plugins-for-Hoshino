@@ -428,7 +428,7 @@ def generate_stock_chart(stock_name, history, stock_data=None):
     timestamps, prices = zip(*history)
     dates = [datetime.fromtimestamp(ts) for ts in timestamps]
 
-    # 计算时间范围（过去24小时，并延长1小时）
+    # 计算时间范围（过去24小时，并延长3小时）
     now = datetime.now()
     start_time = now - timedelta(hours=HISTORY_DURATION_HOURS)
     end_time = now + timedelta(hours=3)  # 延长3小时
