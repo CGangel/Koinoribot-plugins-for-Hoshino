@@ -120,7 +120,7 @@ MARKET_EVENTS = {
             "魔法少女在战争中大捷，领涨大盘！"
         ],
         "scope": "all",  # 影响所有股票
-        "effect": lambda price: price * random.uniform(1.05, 1.20)  # 全体上涨
+        "effect": lambda price: price * random.uniform(1.1, 1.25)  # 全体上涨
     },
     "大盘下跌": {
         "templates": [
@@ -137,7 +137,7 @@ MARKET_EVENTS = {
             "{stock}发现新资源，价值重估！"
         ],
         "scope": "single",
-        "effect": lambda price: price * random.uniform(1.20, 1.80)  # 大幅上涨
+        "effect": lambda price: price * random.uniform(1.25, 2.5)  # 大幅上涨
     },
     "暴跌": {
         "templates": [
@@ -362,8 +362,8 @@ async def hourly_price_update_job():
             current_price = history[-1][1]
 
         # 随机波动
-        change_percent = random.uniform(-0.15, 0.15)
-        regression_factor = 0.03
+        change_percent = random.uniform(-0.15, 0.18)
+        regression_factor = 0.05
         change_percent += regression_factor * (initial_price - current_price) / current_price
 
         new_price = current_price * (1 + change_percent)
@@ -428,9 +428,10 @@ def generate_stock_chart(stock_name, history, stock_data=None):
     timestamps, prices = zip(*history)
     dates = [datetime.fromtimestamp(ts) for ts in timestamps]
 
-    # 计算时间范围（过去24小时）
+    # 计算时间范围（过去24小时，并延长1小时）
     now = datetime.now()
     start_time = now - timedelta(hours=HISTORY_DURATION_HOURS)
+    end_time = now + timedelta(hours=3)  # 延长3小时
     
     # 创建 Plotly Figure
     fig = go.Figure()
@@ -479,13 +480,14 @@ def generate_stock_chart(stock_name, history, stock_data=None):
         yaxis_title='价格 (金币)',
         xaxis=dict(
             tickformat='%H:%M',
-            range=[start_time, now]  # 设置X轴范围为过去24小时
+            range=[start_time, end_time]  # 设置X轴范围为过去24小时+1小时
         ),
         hovermode='x unified',
         template='plotly_white',
         margin=dict(l=50, r=50, t=80, b=50)
     )
     
+    # 调整当前价格标注的位置
     fig.add_annotation(
         x=dates[-1],
         y=current_price,
@@ -494,8 +496,9 @@ def generate_stock_chart(stock_name, history, stock_data=None):
         text=f'当前: {current_price:.2f}',
         showarrow=True,
         arrowhead=1,
-        ax=50,
-        ay=-30
+        ax=30,  # 减小箭头长度
+        ay=-30,
+        xanchor='left'  # 确保文本向左对齐
     )
 
     try:
