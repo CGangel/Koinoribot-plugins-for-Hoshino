@@ -9,3 +9,6 @@ matplotlib==3.5.3
 tencentcloud-sdk-python==3.0.612
 scikit-image==0.19.2
 pydantic==1.10.1
+kaleido==0.2.1
+narwhals==1.35.0
+plotly==6.0.1
