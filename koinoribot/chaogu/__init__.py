@@ -480,7 +480,7 @@ def generate_stock_chart(stock_name, history, stock_data=None):
         yaxis_title='价格 (金币)',
         xaxis=dict(
             tickformat='%H:%M',
-            range=[start_time, end_time]  # 设置X轴范围为过去24小时+1小时
+            range=[start_time, end_time]  # 设置X轴范围为过去24小时+3小时
         ),
         hovermode='x unified',
         template='plotly_white',
