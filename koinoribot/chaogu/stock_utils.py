@@ -1,10 +1,11 @@
-
 import json
 import asyncio
 from typing import Dict, Any
+from .._R import get, userPath
+import os
 
 # 复用股票插件中的文件路径和锁
-PORTFOLIOS_FILE = "/yunzai/HoshinoBot/hoshino/modules/Koinoribot/chaogu/data/user_portfolios.json"  # 需要调整为实际路径
+PORTFOLIOS_FILE = os.path.join(userPath, 'chaogu/user_portfolios.json')  # 需要调整为实际路径
 portfolio_file_lock = asyncio.Lock()
 
 async def load_json_data(filename, default_data, lock):

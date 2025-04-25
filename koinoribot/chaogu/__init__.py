@@ -24,6 +24,7 @@ def get_user_portfolio_exported(user_id):
 sv.get_user_portfolio = get_user_portfolio_exported
 
 
+'''
 # --- 新增功能常量 ---
 try:
     # 这是标准方法，适用于大多数情况
@@ -37,6 +38,10 @@ except NameError:
 PLUGIN_DATA_DIR = os.path.join(current_plugin_dir, 'data')
 STOCKS_FILE = os.path.join(PLUGIN_DATA_DIR, 'stock_data.json')
 PORTFOLIOS_FILE = os.path.join(PLUGIN_DATA_DIR, 'user_portfolios.json')
+'''
+STOCKS_FILE = os.path.join(userPath, 'chaogu/stock_data.json')
+PORTFOLIOS_FILE = os.path.join(userPath, 'chaogu/user_portfolios.json')
+GAMBLE_LIMITS_FILE = os.path.join(userPath, 'chaogu/daily_gamble_limits.json')
 HISTORY_DURATION_HOURS = 24 # 只保留过去24小时数据
 
 # 锁，防止并发读写JSON文件导致数据损坏
@@ -1008,7 +1013,6 @@ async def chaogu_help(bot, ev):
 
     ################################################################################
 
-GAMBLE_LIMITS_FILE = os.path.join(PLUGIN_DATA_DIR, 'daily_gamble_limits.json')
 MAX_GAMBLE_ROUNDS = 5
 
 # 赌博状态管理 (内存中)
