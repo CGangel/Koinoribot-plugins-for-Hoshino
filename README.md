@@ -6,6 +6,14 @@
 
 基于HoshinoBot的冰祈插件集合 [![Hoshinobot Version](https://img.shields.io/badge/hoshino-2.1.0-blue)](https://github.com/Ice9Coffee/HoshinoBot) 
 
+## 更新日志
+
+**2025.4**新增功能 【一场豪赌】 所有，或者一无所有！
+**2025.4**新增功能 【炒股】 具体请发送‘炒股帮助’。没准你就是下一个梦尔街之狼！
+**2025.4**新增功能 【领低保】每日可通过‘领低保’获取快速启动资金
+**2025.3**新增功能 【捉萝莉】（boss战）
+**2025.2**新增功能 【十连钓鱼】【百连钓鱼】【一键出售】优化fishing代码
+
 
 ## 功能介绍
 
