@@ -1049,11 +1049,13 @@ async def record_gamble_today(user_id):
     await save_gamble_limits(limits)
 
 def get_gamble_win_probability(gold):
-    """根据金币数量计算获胜概率 (返回 0 到 1 之间的值)"""
+    """豪赌概率分层 (返回 0 到 1 之间的值)"""
     if gold < 10000:
         return 0.90
-    elif gold < 100000:
+    elif gold < 50000:
         return 0.70
+    elif gold < 100000:
+        return 0.60
     elif gold < 1000000:
         return 0.50
     elif gold < 10000000:
