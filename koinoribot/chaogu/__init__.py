@@ -19,26 +19,7 @@ from hoshino.config import SUPERUSERS
 sv = Service('stock_market', manage_priv=priv.ADMIN, enable_on_default=True)
 no = get('emotion/no.png').cqcode
 ok = get('emotion/ok.png').cqcode
-def get_user_portfolio_exported(user_id):
-    return get_user_portfolio(user_id)
-sv.get_user_portfolio = get_user_portfolio_exported
 
-
-'''
-# --- 新增功能常量 ---
-try:
-    # 这是标准方法，适用于大多数情况
-    current_plugin_dir = os.path.dirname(os.path.abspath(__file__))
-except NameError:
-    # 如果在某些特殊环境 (如某些打包工具或交互式解释器) __file__ 未定义，
-    # 可以尝试使用 inspect 模块作为后备
-    import inspect
-    current_plugin_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-
-PLUGIN_DATA_DIR = os.path.join(current_plugin_dir, 'data')
-STOCKS_FILE = os.path.join(PLUGIN_DATA_DIR, 'stock_data.json')
-PORTFOLIOS_FILE = os.path.join(PLUGIN_DATA_DIR, 'user_portfolios.json')
-'''
 STOCKS_FILE = os.path.join(userPath, 'chaogu/stock_data.json')
 PORTFOLIOS_FILE = os.path.join(userPath, 'chaogu/user_portfolios.json')
 GAMBLE_LIMITS_FILE = os.path.join(userPath, 'chaogu/daily_gamble_limits.json')
