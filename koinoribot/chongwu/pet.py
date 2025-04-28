@@ -14,22 +14,22 @@ from hoshino import Service, priv, R
 from hoshino.typing import CQEvent, MessageSegment
 from .. import money
 from .petconfig import GACHA_COST, GACHA_REWARDS, GACHA_CONSOLE_PRIZE, BASE_PETS, EVOLUTIONS, growth1, growth2, growth3, PET_SHOP_ITEMS, STATUS_DESCRIPTIONS
-from hoshino.config import SUPERUSERS
+from hoshino.config import SUPERUSERS 
 
 PET_DATA_DIR = os.path.join(userPath, 'chongwu')
 USER_PET_DATABASE = os.path.join(PET_DATA_DIR, 'user_pets.json')
 USER_ITEMS_DATABASE = os.path.join(PET_DATA_DIR, 'user_items.json')
 
-# Ëø·ÀÖ¹²¢·¢ÎÊÌâ
+# é”é˜²æ­¢å¹¶å‘é—®é¢˜
 user_pet_lock = asyncio.Lock()
 user_items_lock = asyncio.Lock()
 
-# ³õÊ¼»¯Êı¾İÄ¿Â¼
+# åˆå§‹åŒ–æ•°æ®ç›®å½•
 os.makedirs(PET_DATA_DIR, exist_ok=True)
 
-# --- ¸¨Öúº¯Êı ---
+# --- è¾…åŠ©å‡½æ•° ---
 async def load_json_data(filename, default_data, lock):
-    """Òì²½°²È«µØ¼ÓÔØJSONÊı¾İ"""
+    """å¼‚æ­¥å®‰å…¨åœ°åŠ è½½JSONæ•°æ®"""
     async with lock:
         if not os.path.exists(filename):
             return default_data
@@ -40,7 +40,7 @@ async def load_json_data(filename, default_data, lock):
             return default_data
 
 async def save_json_data(filename, data, lock):
-    """Òì²½°²È«µØ±£´æJSONÊı¾İ"""
+    """å¼‚æ­¥å®‰å…¨åœ°ä¿å­˜JSONæ•°æ®"""
     async with lock:
         try:
             temp_filename = filename + ".tmp"
@@ -51,38 +51,38 @@ async def save_json_data(filename, data, lock):
             print(f"Error saving JSON data to {filename}: {e}")
 
 async def get_pet_data():
-    """»ñÈ¡³èÎï»ù´¡Êı¾İ"""
+    """è·å–å® ç‰©åŸºç¡€æ•°æ®"""
     return BASE_PETS
 
 async def get_user_pets():
-    """»ñÈ¡ËùÓĞÓÃ»§µÄ³èÎïÊı¾İ"""
+    """è·å–æ‰€æœ‰ç”¨æˆ·çš„å® ç‰©æ•°æ®"""
     return await load_json_data(USER_PET_DATABASE, {}, user_pet_lock)
 
 async def save_user_pets(data):
-    """±£´æËùÓĞÓÃ»§µÄ³èÎïÊı¾İ"""
+    """ä¿å­˜æ‰€æœ‰ç”¨æˆ·çš„å® ç‰©æ•°æ®"""
     await save_json_data(USER_PET_DATABASE, data, user_pet_lock)
 
 async def get_user_items():
-    """»ñÈ¡ËùÓĞÓÃ»§µÄÎïÆ·Êı¾İ"""
+    """è·å–æ‰€æœ‰ç”¨æˆ·çš„ç‰©å“æ•°æ®"""
     return await load_json_data(USER_ITEMS_DATABASE, {}, user_items_lock)
 
 async def save_user_items(data):
-    """±£´æËùÓĞÓÃ»§µÄÎïÆ·Êı¾İ"""
+    """ä¿å­˜æ‰€æœ‰ç”¨æˆ·çš„ç‰©å“æ•°æ®"""
     await save_json_data(USER_ITEMS_DATABASE, data, user_items_lock)
 
 async def get_user_pet(user_id):
-    """»ñÈ¡µ¥¸öÓÃ»§µÄ³èÎï"""
+    """è·å–å•ä¸ªç”¨æˆ·çš„å® ç‰©"""
     user_pets = await get_user_pets()
     return user_pets.get(str(user_id), None)
 
 async def update_user_pet(user_id, pet_data):
-    """¸üĞÂÓÃ»§µÄ³èÎïÊı¾İ"""
+    """æ›´æ–°ç”¨æˆ·çš„å® ç‰©æ•°æ®"""
     user_pets = await get_user_pets()
     user_pets[str(user_id)] = pet_data
     await save_user_pets(user_pets)
 
 async def remove_user_pet(user_id):
-    """ÒÆ³ıÓÃ»§µÄ³èÎï"""
+    """ç§»é™¤ç”¨æˆ·çš„å® ç‰©"""
     user_pets = await get_user_pets()
     if str(user_id) in user_pets:
         del user_pets[str(user_id)]
@@ -91,12 +91,12 @@ async def remove_user_pet(user_id):
     return False
 
 async def get_user_item_count(user_id, item_name):
-    """»ñÈ¡ÓÃ»§ÓµÓĞµÄÌØ¶¨ÎïÆ·ÊıÁ¿"""
+    """è·å–ç”¨æˆ·æ‹¥æœ‰çš„ç‰¹å®šç‰©å“æ•°é‡"""
     user_items = await get_user_items()
     return user_items.get(str(user_id), {}).get(item_name, 0)
 
 async def add_user_item(user_id, item_name, quantity=1):
-    """¸øÓÃ»§Ìí¼ÓÎïÆ·"""
+    """ç»™ç”¨æˆ·æ·»åŠ ç‰©å“"""
     user_items = await get_user_items()
     if str(user_id) not in user_items:
         user_items[str(user_id)] = {}
@@ -104,7 +104,7 @@ async def add_user_item(user_id, item_name, quantity=1):
     await save_user_items(user_items)
 
 async def use_user_item(user_id, item_name, quantity=1):
-    """Ê¹ÓÃÓÃ»§ÎïÆ·"""
+    """ä½¿ç”¨ç”¨æˆ·ç‰©å“"""
     user_items = await get_user_items()
     if str(user_id) not in user_items or user_items[str(user_id)].get(item_name, 0) < quantity:
         return False
@@ -115,20 +115,20 @@ async def use_user_item(user_id, item_name, quantity=1):
     return True
 
 async def get_status_description(stat_name, value):
-    """»ñÈ¡×´Ì¬ÃèÊö"""
+    """è·å–çŠ¶æ€æè¿°"""
     thresholds = sorted(STATUS_DESCRIPTIONS[stat_name].keys(), reverse=True)
     for threshold in thresholds:
         if value >= threshold:
             return STATUS_DESCRIPTIONS[stat_name][threshold]
-    return "×´Ì¬Òì³£"
+    return "çŠ¶æ€å¼‚å¸¸"
 
 async def update_pet_status(pet):
-    """¸üĞÂ³èÎï×´Ì¬"""
+    """æ›´æ–°å® ç‰©çŠ¶æ€"""
     current_time = time.time()
     last_update = pet.get("last_update", current_time)
     time_passed = current_time - last_update
     
-    #³õÊ¼»¯³É³¤ÖµÉÏÏŞ
+    #åˆå§‹åŒ–æˆé•¿å€¼ä¸Šé™
     if pet["stage"] == 0:
         pet["growth_required"] = growth1
     elif pet["stage"] == 1:
@@ -137,35 +137,35 @@ async def update_pet_status(pet):
         pet["growth_required"] = growth3
     
     
-    # ËæÊ±¼ä¼õÉÙ×´Ì¬Öµ
-    pet["hunger"] = max(0, pet["hunger"] - time_passed / 3600 * 2)  # Ã¿Ğ¡Ê±¼õÉÙ2µã
-    pet["energy"] = max(0, pet["energy"] - time_passed / 3600 * 2)  # Ã¿Ğ¡Ê±¼õÉÙ2µã
+    # éšæ—¶é—´å‡å°‘çŠ¶æ€å€¼
+    pet["hunger"] = max(0, pet["hunger"] - time_passed / 3600 * 2)  # æ¯å°æ—¶å‡å°‘2ç‚¹
+    pet["energy"] = max(0, pet["energy"] - time_passed / 3600 * 2)  # æ¯å°æ—¶å‡å°‘2ç‚¹
     
-    # ¼ì²éÊÇ·ñ´¥·¢Àë¼Ò³ö×ßÌõ¼ş
+    # æ£€æŸ¥æ˜¯å¦è§¦å‘ç¦»å®¶å‡ºèµ°æ¡ä»¶
     if (pet["hunger"] < 10 or pet["energy"] < 10) and "runaway" not in pet:
-        pet["happiness"] = max(0, pet["happiness"] - time_passed / 3600 * 3)  # Ã¿Ğ¡Ê±¼õÉÙ3µã
+        pet["happiness"] = max(0, pet["happiness"] - time_passed / 3600 * 3)  # æ¯å°æ—¶å‡å°‘3ç‚¹
 
     else:
-        pet["happiness"] = max(0, pet["happiness"] - time_passed / 3600 * 1)  # Õı³£Çé¿öÃ¿Ğ¡Ê±¼õÉÙ1µã
+        pet["happiness"] = max(0, pet["happiness"] - time_passed / 3600 * 1)  # æ­£å¸¸æƒ…å†µæ¯å°æ—¶å‡å°‘1ç‚¹
         
     if pet["happiness"] < 1:
-        pet["runaway"] = True  # ±ê¼ÇÎªÀë¼Ò³ö×ß×´Ì¬
+        pet["runaway"] = True  # æ ‡è®°ä¸ºç¦»å®¶å‡ºèµ°çŠ¶æ€
 
-    # ¸üĞÂ³É³¤Öµ
+    # æ›´æ–°æˆé•¿å€¼
     if not pet.get("runaway"):
         growth_rate = pet.get("growth_rate", 1.0)
-        # ³ÉÄêÌåÒÀÈ»¿ÉÒÔ»ñµÃ³É³¤Öµ£¬µ«Ã»ÓĞÉÏÏŞ
+        # æˆå¹´ä½“ä¾ç„¶å¯ä»¥è·å¾—æˆé•¿å€¼ï¼Œä½†æ²¡æœ‰ä¸Šé™
         pet["growth"] = min(pet["growth_required"], pet.get("growth", 0) + time_passed / 3600 * growth_rate)
     
     pet["last_update"] = current_time
     return pet
 
 async def check_pet_evolution(pet):
-    """¼ì²é³èÎïÊÇ·ñ¿ÉÒÔ½ø»¯"""
-    # Ó×ÄêÌå -> ³É³¤Ìå
+    """æ£€æŸ¥å® ç‰©æ˜¯å¦å¯ä»¥è¿›åŒ–"""
+    # å¹¼å¹´ä½“ -> æˆé•¿ä½“
     if pet["stage"] == 0 and pet["growth"] >= pet.get("growth_required", 100):
         return "stage1"
-    # ³É³¤Ìå -> ³ÉÄêÌå
+    # æˆé•¿ä½“ -> æˆå¹´ä½“
     elif pet["stage"] == 1 and pet["growth"] >= pet.get("growth_required", 200):
         return "stage2"
     return None
