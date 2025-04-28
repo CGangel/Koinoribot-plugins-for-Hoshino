@@ -433,8 +433,8 @@ async def use_pet_item(bot, ev: CQEvent):
     if item.get("growth", 0) != 0:
         effect_msg.append(f"成长值: {item['growth']:+}")
     
-    await bot.send(ev, f"你对{pet['name']}使用了{item_name}！" +
-                  ("\n".join(effect_msg) if effect_msg else "") +
+    await bot.send(ev, f"\n你对{pet['name']}使用了{item_name}！" +
+                  ("\n" + "\n".join(effect_msg) if effect_msg else "") +
                   (f"\n{special_msg}" if special_msg else ""), at_sender=True)
 
 @sv.on_prefix(('摸摸宠物', '陪伴宠物'))
