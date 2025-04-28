@@ -107,12 +107,14 @@ async def open_gacha(bot, ev: CQEvent):
     roll = random.random() * 100
     pet_type = None
     
-    if roll < 70:  # 70%普通
+    if roll < 50:  # 普通
         pool = GACHA_REWARDS["普通"]
-    elif roll < 95:  # 25%稀有
+    elif roll < 80:  # 稀有
         pool = GACHA_REWARDS["稀有"]
-    else:  # 5%史诗
+    elif roll < 95:  # 史诗
         pool = GACHA_REWARDS["史诗"]
+    else:  # 传说
+        pool = GACHA_REWARDS["传说"]
     
     # 从选择的池中随机宠物
     pet_type = random.choices(list(pool.keys()), weights=list(pool.values()))[0]
