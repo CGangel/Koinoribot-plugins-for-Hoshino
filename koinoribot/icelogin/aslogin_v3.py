@@ -429,7 +429,7 @@ async def get_purse(uid, user_name, guild_flag = 0):
 
     money.load_user_money()
     msg = ''
-    key_list = ["金币", "幸运币", "星星"]
+    key_list = ["金币", "幸运币", "星星", "宝石"]
     for key in key_list:
         msg += f'\n{key} : {money.get_user_money(uid, money.translatename(key))}'
 
@@ -439,6 +439,7 @@ async def get_purse(uid, user_name, guild_flag = 0):
     user_starstone = money.get_user_money(uid, 'starstone')
     user_gold = money.get_user_money(uid, 'gold')
     user_lucky = money.get_user_money(uid, 'luckygold')
+    user_kirastone = money.get_user_money(uid, 'kirastone')
     choose_list = normal_bg_list[:]
     # === 普通解锁背景
     if user_gold > 300:
@@ -511,6 +512,8 @@ async def get_purse(uid, user_name, guild_flag = 0):
     bg.paste(img = gold_text, pos = (280, 187), alpha=True)
     lucky_text = BuildImage(0, 0, plain_text=f'幸运币 {user_lucky}枚', font_size=30, font='yz.ttf', font_color=font_color)
     bg.paste(img = lucky_text, pos = (100, 245), alpha=True)
+    kirastone_text = BuildImage(0, 0, plain_text=f'宝石 {user_kirastone}颗', font_size=30, font='yz.ttf', font_color=font_color)
+    bg.paste(img = kirastone_text, pos = (280, 245), alpha=True) # 粘贴位置根据图片实际布局调整
     # 结束
     if save_image_mode:
         bg.save(path = os.path.join(os.path.dirname(__file__), f'cache/{uid}.jpg'))
