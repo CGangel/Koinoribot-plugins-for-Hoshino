@@ -12,8 +12,11 @@ GACHA_REWARDS = {
         "小狐狸": 50
     },
     "史诗": {
-        "蠢萝莉": 10,
-        "熊猫宝宝": 90
+        "精灵宝宝": 50,
+        "熊猫宝宝": 50
+    },
+    "传说": {
+        "蠢萝莉": 100,
     }
 }
 GACHA_CONSOLE_PRIZE = 50  # 安慰奖金币数量
@@ -38,7 +41,7 @@ BASE_PETS = {
         "growth_required": 100  # 进化到下一阶段需要的成长值
     },
     "小狗": {
-        "max_hunger": 120,
+        "max_hunger": 100,
         "max_energy": 90,
         "max_happiness": 110,
         "growth_rate": 1.2,
@@ -56,20 +59,29 @@ BASE_PETS = {
         "growth_required": 100
     },
     "蠢萝莉": {
-        "max_hunger": 150,
-        "max_energy": 150,
-        "max_happiness": 80,
-        "growth_rate": 1.4,
-        "rarity": "史诗",
+        "max_hunger": 200,
+        "max_energy": 200,
+        "max_happiness": 200,
+        "growth_rate": 1.5,
+        "rarity": "传说",
         "stage": 0,
         "growth_required": 100
     },
     "小狐狸": {
-        "max_hunger": 60,
+        "max_hunger": 80,
         "max_energy": 140,
-        "max_happiness": 100,
+        "max_happiness": 130,
         "growth_rate": 1.3,
         "rarity": "稀有",
+        "stage": 0,
+        "growth_required": 100
+    },
+    "精灵宝宝": {
+        "max_hunger": 100,
+        "max_energy": 200,
+        "max_happiness": 200,
+        "growth_rate": 1.4,
+        "rarity": "史诗",
         "stage": 0,
         "growth_required": 100
     },
@@ -78,7 +90,7 @@ BASE_PETS = {
         "max_energy": 100,
         "max_happiness": 200,
         "growth_rate": 1.4,
-        "rarity": "传说",
+        "rarity": "史诗",
         "stage": 0,
         "growth_required": 100
     }
@@ -112,6 +124,11 @@ EVOLUTIONS = {
         "成长体2": "赤狐",
         "成长体3": "月光灵狐"
     },
+    "精灵宝宝": {
+        "成长体1": "花精灵",
+        "成长体2": "树精力",
+        "成长体3": "元素精灵"
+    },
     "熊猫宝宝": {
         "成长体1": "暗夜修女",
         "成长体2": "纯白修女",
@@ -133,6 +150,9 @@ EVOLUTIONS = {
     "藏狐": "高原守护",
     "赤狐": "火焰灵狐",
     "月光灵狐": "狐耳巫女",
+    "花精灵": "百花少女",
+    "树精灵": "森林公主",
+    "元素精灵": "元素神女",
     "黑之天使": "黑天使",
     "白之天使": "白天使",
     "黑白少女": "黑白神女"
@@ -236,5 +256,3 @@ STATUS_DESCRIPTIONS = {
         0: "非常沮丧"
     }
 }
-
-
