@@ -434,7 +434,7 @@ async def multi_fishing(bot, ev, times, cost, star_cost, command_name):
     uid = ev.user_id
     user_starstone = money.get_user_money(uid, 'starstone')
     if user_starstone < star_cost:
-        await bot.send(ev, '\n呜，一整天的就知道钓鱼......哼，不理你了！', +no, at_sender=True)
+        await bot.send(ev, '\n呜，一整天的就知道钓鱼......哼，不理你了！' +no, at_sender=True)
         return
     if ev.user_id in BLACKUSERS:
         await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' + no, at_sender=True)
