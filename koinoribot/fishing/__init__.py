@@ -772,7 +772,7 @@ async def free_func(bot, ev):
     if ev.user_id in BLACKUSERS:
         await bot.send(ev, '\n操作失败，账户被冻结，请联系管理员寻求帮助。' +no, at_sender=True)
         return
-    result = await sell_fish(uid, fish, num)
+    result = sell_fish(uid, fish, num)
     await bot.send(ev, result, at_sender=True)
 
 
