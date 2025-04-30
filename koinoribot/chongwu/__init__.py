@@ -335,7 +335,7 @@ async def use_pet_item(bot, ev: CQEvent):
                 
                 special_msg = f"宠物进化为了{new_type}！"
             else:
-                await bot.send(ev, "宠物还不满足进化条件！需要是幼年体且成长值满100。", at_sender=True)
+                await bot.send(ev, "宠物还不满足进化条件！需要是幼年体且成长值max。", at_sender=True)
                 await add_user_item(user_id, item_name)  # 退回物品
                 return
             
@@ -358,7 +358,7 @@ async def use_pet_item(bot, ev: CQEvent):
                     await add_user_item(user_id, item_name)  # 退回物品
                     return
             else:
-                await bot.send(ev, "宠物还不满足进化条件！需要是成长体且成长值满200。", at_sender=True)
+                await bot.send(ev, "宠物还不满足进化条件！需要是成长体且成长值max。", at_sender=True)
                 await add_user_item(user_id, item_name)  # 退回物品
                 return
 
