@@ -44,6 +44,10 @@ STOCKS = {
     "铃音股": 230.0,
     "音祈股": 1000.0,
     "梦铃股": 500.0,
+    "姐妹股": 500.0,
+    "橘馨股": 500.0,
+    "白芷股": 500.0,
+    "雾织股": 500.0,
 }
 
 # --- 辅助函数：读写JSON ---
@@ -629,7 +633,7 @@ async def handle_sell_stock(bot, ev):
 
     # 计算总收入并扣除3%手续费（手续费向下取整）
     base_earnings = current_price * amount_to_sell
-    fee = math.floor(base_earnings * 0.03)  # 3%手续费
+    fee = math.floor(base_earnings * 0.05)  # 手续费
     total_earnings = math.floor(base_earnings) - fee  # 股票收入向下取整 - 手续费
 
     # 执行出售
@@ -947,7 +951,7 @@ async def handle_manual_event(bot, ev):
 
 @sv.on_fullmatch('修复股票数据')
 async def fix_stock_data(bot, ev):
-    if ev.user_id != ADMIN_UID:
+    if ev.user_id not in SUPERUSERS:
         return
     
     try:
